@@ -1,0 +1,2 @@
+# whaaale
+Hyperspectral image viewer
