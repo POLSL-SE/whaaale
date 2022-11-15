@@ -14,13 +14,13 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
       - name: Install libraries (apt)
-        run: sudo apt install -y libegl1 libxcb1-dev
+        run: sudo apt install -y libegl1 libxcb*-dev
       - name: Install pip dependencies
         run: pip install -r requirements.txt
 
       # Build
       - name: Build
-        run: pyinstaller --noconsole --noupx --log-level=DEBUG --add-binary "$(python -c 'import PyQt6 as q; print(q.__path__[0])')/Qt6/lib/libQt6XcbQpa.so.6":libQt6XcbQpa.so.6 whaaale.py
+        run: pyinstaller --noconsole --noupx --log-level=DEBUG --add-binary "$(python -c 'import PyQt6 as q; print(q.__path__[0])')/Qt6/lib/libQt6XcbQpa.so.6":. whaaale.py
 
       # Package and upload
       - name: Package and compress
