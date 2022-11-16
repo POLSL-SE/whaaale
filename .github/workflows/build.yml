@@ -53,5 +53,6 @@ jobs:
       - uses: actions/upload-artifact@v3
         with:
           name: whaaale-windows_x64
-          path: dist/whaaale
+          # Upload dist, so that the archive will contain "whaaale" directory
+          path: dist/
           if-no-files-found: error
