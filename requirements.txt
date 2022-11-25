@@ -21,6 +21,6 @@ scipy==1.9.3
 https://download.lfd.uci.edu/pythonlibs/archived/GDAL-3.4.3-cp311-cp311-win_amd64.whl; sys_platform == "win32"
 # On linux use 3.4.1 since Ubuntu 22.04 (GitHub actions runner) has 3.4.1 as the latest available version of libgdal-dev
 gdal==3.4.1; sys_platform == "linux"
-# h5py has no prebuilt wheels on PyPi, on Windows use a build by Chris Gohlke, on linux build from source (libhdf5-dev required)
+# h5py has no prebuilt wheels for Python 3.11 on PyPi (h5py/h5py#2146), on Windows use a build by Chris Gohlke, on linux build from source (libhdf5-dev required)
 https://download.lfd.uci.edu/pythonlibs/archived/h5py-3.7.0-cp311-cp311-win_amd64.whl; sys_platform == "win32"
 h5py==3.7.0; sys_platform == "linux"
