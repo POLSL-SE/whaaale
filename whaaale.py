@@ -5,6 +5,9 @@ import numpy as np
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
 from PyQt6.QtGui import QPainter
 from PyQt6.QtWidgets import QApplication, QMainWindow
+from osgeo import gdal
+
+gdal.UseExceptions()
 
 a = QApplication(argv)
 series = QLineSeries()
