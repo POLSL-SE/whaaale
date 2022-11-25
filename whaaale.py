@@ -11,6 +11,7 @@ class MainWindow(QMainWindow):
     def start(self):
         self.setup_ui()
         self.resize(400, 300)
+        self.setWindowTitle("Whaaale")
         self.show()
 
     def setup_ui(self):
@@ -39,6 +40,8 @@ class MainWindow(QMainWindow):
 
 def main():
     a = QApplication(argv)
+    main_window = MainWindow()
+    main_window.start()
     a.exec()
 
 
