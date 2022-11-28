@@ -6,10 +6,11 @@ from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
 from lib import HsImage
 from loaders.abstract import AbstractFileLoader
+from loaders.matlab import MatlabLoader
 
 
 class Loader:
-    loaders: list[Type[AbstractFileLoader]] = []
+    loaders: list[Type[AbstractFileLoader]] = [MatlabLoader]
 
     def __init__(self, parent: QWidget) -> None:
         self.parent = parent
