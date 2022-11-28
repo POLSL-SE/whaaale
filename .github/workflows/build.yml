@@ -1,0 +1,62 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  linux-amd64:
+    runs-on: ubuntu-22.04
+    steps:
+      # Checkout and setup
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+      - name: Install libraries (apt)
+        run: sudo apt install -y libegl1 libxcb*-dev libxkbcommon-x11-0 libgdal-dev libhdf5-dev
+      - name: Install pip dependencies
+        run: pip install -r requirements.txt
+
+      # Build
+      - name: Build
+        run: pyinstaller --noupx --add-binary "$(python -c 'import PyQt6 as q; print(q.__path__[0])')/Qt6/lib/libQt6XcbQpa.so.6":. whaaale.py
+
+      # Package and upload
+      - name: Package and compress
+        # Don't compress. GitHub packs artifacts into zip. Use tar to keep executable flag on binaries.
+        run: cd dist && tar -cvf whaaale-linux_amd64.tar whaaale/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: whaaale-linux_amd64
+          path: dist/whaaale-linux_amd64.tar
+          if-no-files-found: error
+
+  windows-x64:
+    runs-on: windows-latest
+    steps:
+      # Checkout and setup
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements.txt
+      - name: Install pip dependencies
+        run: pip install -r requirements.txt
+
+      # Build
+      - name: Build
+        run: pyinstaller --noconsole --noupx whaaale.py
+
+      # Upload
+      - uses: actions/upload-artifact@v3
+        with:
+          name: whaaale-windows_x64
+          # Upload dist, so that the archive will contain "whaaale" directory
+          path: dist/
+          if-no-files-found: error
