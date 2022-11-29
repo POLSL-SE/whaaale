@@ -36,8 +36,8 @@ class HsImage(Generic[ScalarType]):
 
     def get_area(self, p1: Coordinates, p2: Coordinates) -> npt.NDArray[ScalarType]:
         """Returns a subarray from the image bounded by `p1` and `p2`."""
-        x_min, x_max = p1[0], p2[0] if p1[0] <= p2[0] else p2[0], p1[0]
-        y_min, y_max = p1[1], p2[1] if p1[1] <= p2[1] else p2[1], p1[1]
+        x_min, x_max = (p1[0], p2[0]) if p1[0] <= p2[0] else (p2[0], p1[0])
+        y_min, y_max = (p1[1], p2[1]) if p1[1] <= p2[1] else (p2[1], p1[1])
         # Add 1, because ranges don't include the upper bound
         x_max += 1
         y_max += 1

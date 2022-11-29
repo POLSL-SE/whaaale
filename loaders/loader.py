@@ -1,6 +1,6 @@
 import os
 import traceback
-from typing import Optional
+from typing import Optional, Type
 
 from PyQt6.QtWidgets import QFileDialog, QMessageBox, QWidget
 
@@ -9,11 +9,11 @@ from loaders.abstract import AbstractFileLoader
 
 
 class Loader:
-    loaders: list[AbstractFileLoader] = []
+    loaders: list[Type[AbstractFileLoader]] = []
 
     def __init__(self, parent: QWidget) -> None:
         self.parent = parent
-        self.extensions_map: dict[str, AbstractFileLoader] = {}
+        self.extensions_map: dict[str, Type[AbstractFileLoader]] = {}
         for loader in self.loaders:
             for extension in loader.EXTENSIONS:
                 if extension in self.extensions_map:
