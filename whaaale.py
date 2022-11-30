@@ -5,7 +5,7 @@ import numpy as np
 from PyQt6 import QtGui
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
 from PyQt6.QtGui import QPainter, QAction, QColor
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget
 
 
 #   ***************************************************************************
@@ -27,28 +27,29 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Whaaale")
         self.show()
 
-    # def setup_chart(self):
-    #     series = QLineSeries()
+    def setup_chart(self):
+        series = QLineSeries()
 
-    #     series.append(0, 6)
-    #     series.append(2, 4)
-    #     l = np.array(
-    #         [[3, 8], [7, 4], [10, 5], [11, 1], [13, 3], [17, 6], [18, 3], [20, 2]]
-    #     )
-    #     for p in l:
-    #         series.append(p[0], p[1])
+        series.append(0, 6)
+        series.append(2, 4)
+        l = np.array(
+            [[3, 8], [7, 4], [10, 5], [11, 1], [13, 3], [17, 6], [18, 3], [20, 2]]
+        )
+        for p in l:
+            series.append(p[0], p[1])
 
-    #     chart = QChart()
-    #     chart.legend().hide()
-    #     chart.addSeries(series)
-    #     chart.createDefaultAxes()
-    #     chart.setTitle("Simple line chart example")
+        chart = QChart()
+        chart.legend().hide()
+        chart.addSeries(series)
+        chart.createDefaultAxes()
+        chart.setTitle("Simple line chart example")
 
-    #     chart_view = QChartView(chart)
-    #     chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-    #     self.chart_view = chart_view
-    #     self.setCentralWidget(self.chart_view)
+        return chart_view
+        # self.chart_view = chart_view
+        # self.setCentralWidget(self.chart_view)
 
     # Overridden function so we can adjust gui to the size of the window
     def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
@@ -60,20 +61,17 @@ class MainWindow(QMainWindow):
         return super().resizeEvent(a0)
 
     def setup_ui(self):
-        # layout = QGridLayout()
+        layout =  QGridLayout()
+        toolbar1 = QVBoxLayout()
+        toolbar2 = QVBoxLayout()
+        viewer = QHBoxLayout()
+        spectrum_graph = QHBoxLayout()
+        layout.addLayout(toolbar1, 0, 0) # row, column, rowSpan, columnSpan
+        layout.addLayout(toolbar2, 1, 0)
+        layout.addLayout(viewer, 0, 1)
+        layout.addLayout(spectrum_graph, 1, 1)
 
-        # self.single_band_button = QPushButton(self)
-        # self.single_band_button.setText('Single')
-        # self.single_band_button.setGeometry(200, 50, 20, 20)
-        # layout.addWidget(self.single_band_button)
-
-        # widget = QWidget()
-        # widget.resize(100, 100)
-        # widget.setLayout(layout)
-        # self.setCentralWidget(widget)
-        
-        # Menu bar
-        self._createMenuBar()
+        # Elements of layout
 
         # Buttons
         # Create a QVBoxLayout instance
@@ -95,6 +93,22 @@ class MainWindow(QMainWindow):
         frame.setLineWidth(3)
         frame.resize(100, 100)
         frame.move(self.size1, 200)
+
+        # add elements to layout
+
+        toolbar1.addWidget(self.single_band_button)
+        toolbar1.addWidget(self.fake_col_button)
+        viewer.addWidget(self.setup_chart())
+
+        widget = QWidget()
+        widget.resize(100, 100)
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+        
+        # # Menu bar
+        self._createMenuBar()
+
+        
         
     def single_band(self):
         # Function for handling clicking on single_band_button
