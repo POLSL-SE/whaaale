@@ -2,19 +2,32 @@
 from sys import argv
 
 import numpy as np
+from PyQt6 import QtGui
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
-from PyQt6.QtGui import QPainter
-from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtGui import QPainter, QAction, QColor
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QWidget
 
+
+#   ***************************************************************************
+#   * This is the first version with fixed button sizes.                      *
+#   * Whaaale will be using layouts to adjust sizes to the window size.       *
+#   ***************************************************************************
 
 class MainWindow(QMainWindow):
     def start(self):
+        # Setup variables
+        self.height = 0
+        self.width = 0
+        self.size1 = 20
+
+        # Setup funcs
+        self.setup_chart()
+        self.resize(640, 360)
         self.setup_ui()
-        self.resize(400, 300)
         self.setWindowTitle("Whaaale")
         self.show()
 
-    def setup_ui(self):
+    def setup_chart(self):
         series = QLineSeries()
 
         series.append(0, 6)
@@ -36,6 +49,78 @@ class MainWindow(QMainWindow):
 
         self.chart_view = chart_view
         self.setCentralWidget(self.chart_view)
+
+    # Overridden function so we can adjust gui to the size of the window
+    def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
+        self.width = self.geometry().width()
+        self.height = self.geometry().height()
+        # self.size1 = int(0.15 * self.width)
+        print("Height: ", self.height)
+        print("Width: ", self.width) 
+        return super().resizeEvent(a0)
+
+    def setup_ui(self):
+        layout = QGridLayout()
+
+        self.single_band_button = QPushButton(self)
+        self.single_band_button.setText('Single')
+        self.single_band_button.setGeometry(200, 50, 20, 20)
+        layout.addWidget(self.single_band_button)
+
+        widget = QWidget()
+        widget.resize(100, 100)
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+        
+        # # Menu bar
+        # self._createMenuBar()
+
+        # # Buttons
+        # # Create a QVBoxLayout instance
+
+        # self.single_band_button = QPushButton(self)
+        # self.single_band_button.setText('Single')
+        # # self.single_band_button.setSize
+        # # self.single_band_button.move(5, 30)
+        # self.single_band_button.setGeometry(100, 100, self.size1, self.size1)
+        # self.single_band_button.clicked.connect(self.single_band)
+
+        # self.fake_col_button = QPushButton(self)
+        # self.fake_col_button.setText('Fake color')
+        # self.fake_col_button.move(110, 30)
+        # self.fake_col_button.clicked.connect(self.fake_col)
+
+        # frame = QFrame(self)
+        # frame.setFrameShape(QFrame.Shape.StyledPanel)
+        # frame.setLineWidth(3)
+        # frame.resize(100, 100)
+        # frame.move(self.size1, 200)
+        
+    def single_band(self):
+        # Function for handling clicking on single_band_button
+        print('clicked single band')
+
+    def fake_col(self):
+        # Function for handling clicking on fake_col_button
+        print('clicked fake color')
+
+    def _createMenuBar(self):
+        menuBar = QMenuBar(self)
+        self.setMenuBar(menuBar)
+        # fileMenu = QMenu("&File", self)
+        # menuBar.addMenu(fileMenu)
+        fileMenu = menuBar.addMenu("&File")
+        editMenu = menuBar.addMenu("&View")
+        helpMenu = menuBar.addMenu("&Help")
+        action_new = QAction("New", self)
+        action_new.triggered.connect(self.fake_col)
+        action_open = QAction("Open", self)
+        action_open.triggered.connect(self.fake_col)
+        action_exit = QAction("Exit", self)
+        action_exit.triggered.connect(self.fake_col)
+        fileMenu.addAction(action_new)
+        fileMenu.addAction(action_open)
+        fileMenu.addAction(action_exit)
 
 
 def main():
