@@ -5,7 +5,7 @@ import numpy as np
 from PyQt6 import QtGui
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
 from PyQt6.QtGui import QPainter, QAction, QColor
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget, QSlider
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QLabel, QComboBox
 from PyQt6.QtCore import Qt 
 
 
@@ -28,40 +28,22 @@ class MainWindow(QMainWindow):
 
     def setup_ui(self):
         layout =  QGridLayout()
-        toolbar1 = QVBoxLayout()
+        toolbar1 = QHBoxLayout()
         toolbar2 = QVBoxLayout()
+        toolbar3 = QVBoxLayout()
+        toolbar4 = QGridLayout()
         viewer = QHBoxLayout()
         spectrum_graph = QHBoxLayout()
-        layout.addLayout(toolbar1, 0, 0, 1, 2) # row, column, rowSpan, columnSpan
-        layout.addLayout(toolbar2, 1, 0, 1, 2)
-        layout.addLayout(viewer, 0, 2, 1, 5)
-        layout.addLayout(spectrum_graph, 1, 2, 1, 5)
+        layout.addLayout(toolbar1, 0, 0, 2, 2) # row, column, rowSpan, columnSpan
+        layout.addLayout(toolbar2, 2, 0, 2, 2)
+        layout.addLayout(toolbar3, 4, 0, 2, 2)
+        layout.addLayout(toolbar4, 6, 0, 2, 2)
+        layout.addLayout(viewer, 0, 2, 4, 6)
+        layout.addLayout(spectrum_graph, 4, 2, 4, 6)
 
-        # Elements of layout
+        # ****** Elements of layout ******
 
-        # Buttons
-        # Create a QVBoxLayout instance
-
-        self.single_band_button = QPushButton(self)
-        self.single_band_button.setText('Single')
-        # self.single_band_button.setSize
-        self.single_band_button.move(5, 30)
-        # self.single_band_button.setGeometry(100, 100, self.size1, self.size1)
-        self.single_band_button.clicked.connect(self.single_band)
-
-        self.fake_col_button = QPushButton(self)
-        self.fake_col_button.setText('Fake color')
-        self.fake_col_button.move(110, 30)
-        self.fake_col_button.clicked.connect(self.fake_col)
-
-        # Slider
-
-        slider = QSlider(Qt.Orientation.Horizontal, self)
-        slider.setGeometry(50,50, 200, 50)
-        slider.setMinimum(0)
-        slider.setMaximum(20)
-        slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        slider.setTickInterval(2)
+        # ****** Frames ******
 
         # frame = QFrame(self)
         # frame.setFrameShape(QFrame.Shape.StyledPanel)
@@ -69,20 +51,103 @@ class MainWindow(QMainWindow):
         # frame.resize(100, 100)
         # frame.move(200, 200)
 
-        # add elements to layout
+        # ****** Buttons ******
 
+        self.single_band_button = QPushButton(self)
+        self.single_band_button.setText('Single')
+        self.single_band_button.clicked.connect(self.single_band)
+
+        self.fake_col_button = QPushButton(self)
+        self.fake_col_button.setText('Fake color')
+        self.fake_col_button.clicked.connect(self.fake_col)
+
+        # ****** Magic Wand ******
+
+        self.label_wand = QLabel("Magic wand", self)
+        self.label_wand.setFixedSize(90, 20)
+
+        select_magic_wand = QComboBox()
+        select_magic_wand.addItem("Option 1")
+        select_magic_wand.addItem("Option 2")
+        select_magic_wand.addItem("Option 3")
+
+        slider_magic_wand = QSlider(Qt.Orientation.Horizontal, self)
+        slider_magic_wand.setGeometry(50,50, 200, 50)
+        slider_magic_wand.setMinimum(0)
+        slider_magic_wand.setMaximum(20)
+        slider_magic_wand.setTickPosition(QSlider.TickPosition.TicksBelow)
+        slider_magic_wand.setTickInterval(2)
+
+        # ****** Spectral curve ******
+
+        self.label_spectral = QLabel("Spectral curve", self)
+        self.label_spectral.setFixedSize(60, 20)
+
+        select_spectral_point = QComboBox()
+        select_spectral_point.addItem("Option 1")
+        select_spectral_point.addItem("Option 2")
+        select_spectral_point.addItem("Option 3")
+
+        select_spectral_area = QComboBox()
+        select_spectral_area.addItem("Option 1")
+        select_spectral_area.addItem("Option 2")
+        select_spectral_area.addItem("Option 3")
+
+        # ****** Menu ******
+
+        self.label_band1 = QLabel("Band #1", self)
+        self.label_band1.setFixedSize(40, 20)
+        frame1 = QFrame(self)
+        frame1.setFrameShape(QFrame.Shape.StyledPanel)
+        frame1.setLineWidth(3)
+        frame1.setFixedSize(30, 30)
+
+        self.label_band2 = QLabel("Band #2", self)
+        self.label_band2.setFixedSize(40, 20)
+        frame2 = QFrame(self)
+        frame2.setFrameShape(QFrame.Shape.StyledPanel)
+        frame2.setLineWidth(3)
+        frame2.setFixedSize(30, 30)
+
+        self.label_band3 = QLabel("Band #3", self)
+        self.label_band3.setFixedSize(40, 20)
+        frame3 = QFrame(self)
+        frame3.setFrameShape(QFrame.Shape.StyledPanel)
+        frame3.setLineWidth(3)
+        frame3.setFixedSize(30, 30)
+
+
+        # ****** Add elements to layout ******
+
+        # toolbar1.addWidget(frame)
         toolbar1.addWidget(self.single_band_button)
         toolbar1.addWidget(self.fake_col_button)
-        toolbar2.addWidget(slider)
+
+        toolbar2.addWidget(self.label_wand)
+        toolbar2.addWidget(select_magic_wand)
+        toolbar2.addWidget(slider_magic_wand)
+
+        toolbar3.addWidget(self.label_spectral)
+        toolbar3.addWidget(select_spectral_point)
+        toolbar3.addWidget(select_spectral_area)
+
+        toolbar4.addWidget(self.label_band1, 0, 0)
+        toolbar4.addWidget(frame1, 0, 1)
+        toolbar4.addWidget(self.label_band2, 1, 0)
+        toolbar4.addWidget(frame2, 1, 1)
+        toolbar4.addWidget(self.label_band3, 2, 0)
+        toolbar4.addWidget(frame3, 2, 1)
+
         spectrum_graph.addWidget(self.setup_chart())
         viewer.addWidget(self.setup_chart())
 
+        # ****** Widget placing ******
         widget = QWidget()
         widget.resize(100, 100)
         widget.setLayout(layout)
         self.setCentralWidget(widget)
         
-        # # Menu bar
+        # ****** Menu bar ******
         self._createMenuBar()
 
     def setup_chart(self):
@@ -120,11 +185,11 @@ class MainWindow(QMainWindow):
     def _createMenuBar(self):
         menuBar = QMenuBar(self)
         self.setMenuBar(menuBar)
-        # fileMenu = QMenu("&File", self)
-        # menuBar.addMenu(fileMenu)
         fileMenu = menuBar.addMenu("&File")
         editMenu = menuBar.addMenu("&View")
         helpMenu = menuBar.addMenu("&Help")
+
+        # File menu
         action_new = QAction("New", self)
         action_new.triggered.connect(self.fake_col)
         action_open = QAction("Open", self)
@@ -134,6 +199,19 @@ class MainWindow(QMainWindow):
         fileMenu.addAction(action_new)
         fileMenu.addAction(action_open)
         fileMenu.addAction(action_exit)
+
+        # Edit menu
+        action_view1 = QAction("Option 1", self)
+        action_view1.triggered.connect(self.fake_col)
+        action_view2 = QAction("Option 2", self)
+        action_view2.triggered.connect(self.fake_col)
+        editMenu.addAction(action_view1)
+        editMenu.addAction(action_view2)
+
+        # Help menu
+        action_help = QAction("Help", self)
+        action_help.triggered.connect(self.fake_col)
+        helpMenu.addAction(action_help)
 
 
 def main():
