@@ -5,7 +5,8 @@ import numpy as np
 from PyQt6 import QtGui
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
 from PyQt6.QtGui import QPainter, QAction, QColor
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget, QSlider
+from PyQt6.QtCore import Qt 
 
 
 class MainWindow(QMainWindow):
@@ -31,10 +32,10 @@ class MainWindow(QMainWindow):
         toolbar2 = QVBoxLayout()
         viewer = QHBoxLayout()
         spectrum_graph = QHBoxLayout()
-        layout.addLayout(toolbar1, 0, 0, 1, 1) # row, column, rowSpan, columnSpan
-        layout.addLayout(toolbar2, 1, 0, 1, 1)
-        layout.addLayout(viewer, 0, 1, 2, 1)
-        layout.addLayout(spectrum_graph, 1, 1, 2, 1)
+        layout.addLayout(toolbar1, 0, 0, 1, 2) # row, column, rowSpan, columnSpan
+        layout.addLayout(toolbar2, 1, 0, 1, 2)
+        layout.addLayout(viewer, 0, 2, 1, 5)
+        layout.addLayout(spectrum_graph, 1, 2, 1, 5)
 
         # Elements of layout
 
@@ -53,6 +54,15 @@ class MainWindow(QMainWindow):
         self.fake_col_button.move(110, 30)
         self.fake_col_button.clicked.connect(self.fake_col)
 
+        # Slider
+
+        slider = QSlider(Qt.Orientation.Horizontal, self)
+        slider.setGeometry(50,50, 200, 50)
+        slider.setMinimum(0)
+        slider.setMaximum(20)
+        slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        slider.setTickInterval(2)
+
         # frame = QFrame(self)
         # frame.setFrameShape(QFrame.Shape.StyledPanel)
         # frame.setLineWidth(3)
@@ -63,7 +73,9 @@ class MainWindow(QMainWindow):
 
         toolbar1.addWidget(self.single_band_button)
         toolbar1.addWidget(self.fake_col_button)
+        toolbar2.addWidget(slider)
         spectrum_graph.addWidget(self.setup_chart())
+        viewer.addWidget(self.setup_chart())
 
         widget = QWidget()
         widget.resize(100, 100)
