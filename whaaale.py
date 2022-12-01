@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
         layout =  QGridLayout()
         toolbar1 = QHBoxLayout()
         toolbar2 = QVBoxLayout()
-        toolbar3 = QVBoxLayout()
+        toolbar3 = QGridLayout()
         toolbar4 = QGridLayout()
         viewer = QHBoxLayout()
         spectrum_graph = QHBoxLayout()
@@ -93,6 +93,16 @@ class MainWindow(QMainWindow):
         select_spectral_area.addItem("Option 2")
         select_spectral_area.addItem("Option 3")
 
+        self.export_png = QPushButton(self)
+        self.export_png.setText('PNG')
+        self.export_png.clicked.connect(self.single_band)
+        self.export_png.setFixedSize(35, 35)
+
+        self.export_csv = QPushButton(self)
+        self.export_csv.setText('CSV')
+        self.export_csv.clicked.connect(self.fake_col)
+        self.export_csv.setFixedSize(35, 35)
+
         # ****** Menu ******
 
         self.label_band1 = QLabel("Band #1", self)
@@ -101,6 +111,7 @@ class MainWindow(QMainWindow):
         frame1.setFrameShape(QFrame.Shape.StyledPanel)
         frame1.setLineWidth(3)
         frame1.setFixedSize(30, 30)
+        frame1.setStyleSheet("background-color:red")
 
         self.label_band2 = QLabel("Band #2", self)
         self.label_band2.setFixedSize(40, 20)
@@ -108,6 +119,7 @@ class MainWindow(QMainWindow):
         frame2.setFrameShape(QFrame.Shape.StyledPanel)
         frame2.setLineWidth(3)
         frame2.setFixedSize(30, 30)
+        frame2.setStyleSheet("background-color:green")
 
         self.label_band3 = QLabel("Band #3", self)
         self.label_band3.setFixedSize(40, 20)
@@ -115,6 +127,7 @@ class MainWindow(QMainWindow):
         frame3.setFrameShape(QFrame.Shape.StyledPanel)
         frame3.setLineWidth(3)
         frame3.setFixedSize(30, 30)
+        frame3.setStyleSheet("background-color:blue")
 
 
         # ****** Add elements to layout ******
@@ -127,9 +140,11 @@ class MainWindow(QMainWindow):
         toolbar2.addWidget(select_magic_wand)
         toolbar2.addWidget(slider_magic_wand)
 
-        toolbar3.addWidget(self.label_spectral)
-        toolbar3.addWidget(select_spectral_point)
-        toolbar3.addWidget(select_spectral_area)
+        toolbar3.addWidget(self.label_spectral, 0, 0)
+        toolbar3.addWidget(select_spectral_point, 1, 0)
+        toolbar3.addWidget(select_spectral_area, 2, 0)
+        toolbar3.addWidget(self.export_png, 3, 0)
+        toolbar3.addWidget(self.export_csv, 3, 1)
 
         toolbar4.addWidget(self.label_band1, 0, 0)
         toolbar4.addWidget(frame1, 0, 1)
