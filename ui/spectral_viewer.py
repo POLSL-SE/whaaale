@@ -5,7 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from PyQt6.QtCharts import QCategoryAxis, QChart, QChartView, QLineSeries
 from PyQt6.QtCore import Qt, QMargins
-from PyQt6.QtGui import QFont, QPainter
+from PyQt6.QtGui import QFont, QPainter, QMouseEvent
 from PyQt6.QtWidgets import QGridLayout, QLabel, QSizePolicy, QWidget
 
 from lib import ScalarType
@@ -106,6 +106,7 @@ class SpectralViewer(QWidget):
         chart.addSeries(series)
         chart.createDefaultAxes()
         chart.setTitle("Spectral curve")
+        chart.setTheme(QChart.ChartTheme.ChartThemeDark)
 
         margins = QMargins(2, 2, 2, -7)
         chart.setMargins(margins)
@@ -116,6 +117,8 @@ class SpectralViewer(QWidget):
 
         chart_view = QChartView(chart)
         chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        chart_view.setRubberBand(QChartView.RubberBand.RectangleRubberBand)
+        chart_view.mouseDoubleClickEvent = lambda event: self.chart_double_click(event)
 
         try:
             self.grid_layout.removeWidget(self.status_label)
@@ -160,6 +163,7 @@ class SpectralViewer(QWidget):
         chart.addSeries(series_qhigh)
         chart.addSeries(series_max)
         chart.setTitle("Spectral curve")
+        chart.setTheme(QChart.ChartTheme.ChartThemeDark)
 
         margins = QMargins(2, 2, 2, -7)
         chart.setMargins(margins)
@@ -176,6 +180,8 @@ class SpectralViewer(QWidget):
 
         chart_view = QChartView(chart)
         chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        chart_view.setRubberBand(QChartView.RubberBand.RectangleRubberBand)
+        chart_view.mouseDoubleClickEvent = lambda event: self.chart_double_click(event)
 
         try:
             self.status_label.hide()
@@ -202,3 +208,8 @@ class SpectralViewer(QWidget):
             axis.append(label, i)
 
         return axis
+
+    def chart_double_click(self, event: QMouseEvent):
+        if self.chart_view is not None:
+            self.chart_view.chart().zoomReset()
+            event.accept()
