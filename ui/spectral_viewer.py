@@ -1,18 +1,22 @@
+import csv
 from dataclasses import dataclass
 from math import ceil
 from typing import Literal, Optional
 
+import matplotlib.backend_tools
 import matplotlib.colors
 import matplotlib.style
 import numpy as np
 from matplotlib.axes import Axes
-from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backend_managers import ToolManager
+from matplotlib.backend_tools import ToolBase
+from matplotlib.backends.backend_qt import ToolbarQt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QGridLayout, QLabel, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QFileDialog, QGridLayout, QLabel, QSizePolicy, QWidget
 
 from lib import LabelType, ScalarType
 
@@ -42,8 +46,9 @@ class SpectralViewer(QWidget):
     ) -> None:
         super().__init__(parent, flags)
 
-        # Force Qt backend and set style
+        # Force Qt backend, new toolbar and set style
         matplotlib.use("qtagg")
+        matplotlib.rcParams["toolbar"] = "toolmanager"
         matplotlib.style.use("style/dark_plot.mplstyle")
 
         status_label = QLabel(
@@ -78,10 +83,11 @@ class SpectralViewer(QWidget):
     def from_area(self, area: NDArray[ScalarType]):
         h, w, b = area.shape
         a_lin = area.reshape((h * w, b))
-        q: np.ndarray[tuple[Literal[5], int], np.dtype[np.float64]] = np.quantile(
-            a_lin, [0, 0.25, 0.5, 0.75, 1], axis=0
+        avg = np.mean(a_lin, axis=0)
+        q: np.ndarray[tuple[Literal[4], int], np.dtype[np.float64]] = np.quantile(
+            a_lin, [0, 0.25, 0.75, 1], axis=0
         )
-        v_min, q_low, avg, q_high, v_max = q
+        v_min, q_low, q_high, v_max = q
         values = AreaValues(
             avg=avg, min=v_min, max=v_max, quartile_low=q_low, quartile_high=q_high
         )
@@ -114,6 +120,8 @@ class SpectralViewer(QWidget):
         bands = len(self.labels)
         fig = Figure(tight_layout=True)
         canvas = FigureCanvas(fig)
+        # set focus to enable keyboard shortcuts
+        canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         ax: Axes = fig.subplots()
 
         match self.labels_type:
@@ -162,7 +170,20 @@ class SpectralViewer(QWidget):
 
         self.status_label.setVisible(False)
         self.grid_layout.removeWidget(self.status_label)
-        toolbar = NavigationToolbar(canvas, self)
+        toolmanager = ToolManager(fig)
+        self.toolmanager = toolmanager
+        toolbar = ToolbarQt(toolmanager, self)
+        matplotlib.backend_tools.add_tools_to_manager(self.toolmanager)
+        matplotlib.backend_tools.add_tools_to_container(toolbar)
+        toolmanager.add_tool(
+            "CSV",
+            ExportData,
+            parent=self,
+            plot_values=self.data,
+            labels_type=self.labels_type,
+            bands=self.labels if self.labels_type == LabelType.CUSTOM_STR else x_values,
+        )
+        toolbar.add_tool("CSV", "")
         if self.canvas:
             self.grid_layout.replaceWidget(self.canvas, canvas)
             self.grid_layout.replaceWidget(self.toolbar, toolbar)
@@ -260,3 +281,55 @@ def wavelength_to_rgb(wavelength: float, gamma: float = 0.8):
         G = 0.0
         B = 0.0
     return (R, G, B, A)
+
+
+class ExportData(ToolBase):
+    """Export data as CSV button"""
+
+    default_keymap = ["C"]
+    description = "Export plot as CSV"
+    image = "save"
+
+    def __init__(
+        self,
+        *args,
+        parent: QWidget,
+        plot_values: PixelValues | AreaValues,
+        labels_type: LabelType,
+        bands: list[str] | NDArray[np.int_] | NDArray[np.float64],
+        **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.parent = parent
+        self.plot_values = plot_values
+        self.labels_type = labels_type
+        self.bands = bands
+
+    def trigger(self, *args, **kwargs) -> None:
+        out_path, _filter = QFileDialog.getSaveFileName(
+            self.parent, "Save CSV", "", "CSV files (*.csv *.txt)"
+        )
+        if not out_path:
+            return
+
+        if self.labels_type == LabelType.WAVELENGTH:
+            band_header = "Wavelength"
+        else:
+            band_header = "Band"
+
+        with open(out_path, "w", encoding="utf-8") as out_file:
+            writer = csv.writer(out_file, dialect="excel", lineterminator="\n")
+            match self.plot_values:
+                case PixelValues(values):
+                    writer.writerow([band_header, "Value"])
+                    for row in zip(self.bands, values):
+                        writer.writerow(row)
+
+                case AreaValues(avg, min, max, quartile_low, quartile_high):
+                    writer.writerow(
+                        [band_header, "Minimum", "25%", "Average", "75%", "Maximum"]
+                    )
+                    for row in zip(
+                        self.bands, min, quartile_low, avg, quartile_high, max
+                    ):
+                        writer.writerow(row)
