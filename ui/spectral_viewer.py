@@ -16,8 +16,16 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QFileDialog, QGridLayout, QLabel, QSizePolicy, QWidget
+from PyQt6.QtGui import QAction, QFont
+from PyQt6.QtWidgets import (
+    QFileDialog,
+    QGridLayout,
+    QLabel,
+    QSizePolicy,
+    QToolButton,
+    QWidget,
+    QWidgetAction,
+)
 
 from lib import LabelType, ScalarType
 
@@ -38,7 +46,6 @@ class AreaValues:
 
 class SpectralViewer(QWidget):
     data: Optional[PixelValues | AreaValues] = None
-    canvas: Optional[FigureCanvas] = None
 
     def __init__(
         self,
@@ -67,6 +74,22 @@ class SpectralViewer(QWidget):
         font.setPointSize(12)
         font.setBold(True)
         status_label.setFont(font)
+
+        self.fig = Figure(tight_layout=True)
+        self.canvas = FigureCanvas(self.fig)
+        # set focus to enable keyboard shortcuts
+        self.canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.toolmanager = ToolManager(self.fig)
+        self.toolbar = ToolbarQt(self.toolmanager, self)
+        matplotlib.backend_tools.add_tools_to_manager(self.toolmanager)
+        matplotlib.backend_tools.add_tools_to_container(self.toolbar)
+        self.canvas.setVisible(False)
+        self.toolbar.setVisible(False)
+
+        not_implemented_tools = ["fullscreen", "quit", "quit_all"]
+        for tool in not_implemented_tools:
+            # This will print errors the console, because there are no buttons on the toolbar for these
+            self.toolmanager.remove_tool(tool)
 
         grid_layout = QGridLayout()
         grid_layout.addWidget(status_label)
@@ -98,13 +121,12 @@ class SpectralViewer(QWidget):
     def clear(self):
         self.data = None
 
-        if self.canvas is not None:
+        if not self.status_label.isVisible():
             self.grid_layout.removeWidget(self.canvas)
             self.grid_layout.removeWidget(self.toolbar)
-            self.canvas.deleteLater()
-            self.toolbar.deleteLater()
-            self.canvas = None
-            self.toolbar = None
+            self.canvas.setVisible(False)
+            self.toolbar.setVisible(False)
+            self.fig.clear()
 
         self.status_label.setText(
             "Select a pixel or an area to show the spectral curve."
@@ -119,11 +141,8 @@ class SpectralViewer(QWidget):
             raise RuntimeError("Labels have not been provided")
 
         bands = len(self.labels)
-        fig = Figure(tight_layout=True)
-        canvas = FigureCanvas(fig)
-        # set focus to enable keyboard shortcuts
-        canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        ax: Axes = fig.subplots()
+        self.fig.clear()
+        ax: Axes = self.fig.subplots()
 
         match self.labels_type:
             case LabelType.CUSTOM_STR:
@@ -133,7 +152,7 @@ class SpectralViewer(QWidget):
                     rotation=90,
                     fontsize="x-small",
                 )
-                size = fig.get_size_inches() * fig.dpi
+                size = self.fig.get_size_inches() * self.fig.dpi
                 w = size[0]
                 step = ceil(bands / w * 12)
                 for i, label in enumerate(ax.xaxis.get_ticklabels()):
@@ -169,33 +188,46 @@ class SpectralViewer(QWidget):
         ax.margins(0, 0)
         ax.legend()
 
-        self.status_label.setVisible(False)
-        self.grid_layout.removeWidget(self.status_label)
-        toolmanager = ToolManager(fig)
-        self.toolmanager = toolmanager
-        toolbar = ToolbarQt(toolmanager, self)
-        matplotlib.backend_tools.add_tools_to_manager(self.toolmanager)
-        matplotlib.backend_tools.add_tools_to_container(toolbar)
-        toolmanager.remove_tool("fullscreen")
-        toolmanager.remove_tool("quit")
-        toolmanager.remove_tool("quit_all")
-        toolmanager.add_tool(
-            "CSV",
+        CSV_TOOL_NAME = "CSV"
+        prev_CSV_tool = CSV_TOOL_NAME in self.toolmanager.tools
+        if prev_CSV_tool:
+            self.toolmanager.remove_tool(CSV_TOOL_NAME)
+            # ToolManager.remove_tool triggers an action which removes the item from the toolbar
+            # but remove_toolitem leaves the action in group and keeps itself as its parent
+            # This workaround may break when remove_toolitem gets fixed.
+            # self.toolbar.actions() can be used instead of the group, but may potentially find another action with no default widget
+            actions: list[QAction] = self.toolbar._groups["io"]
+            action: QWidgetAction = [
+                a
+                for a in actions
+                if isinstance(a, QWidgetAction)
+                and (
+                    a.defaultWidget() is None
+                    or isinstance(a.defaultWidget(), QToolButton)
+                    and a.defaultWidget().text() == CSV_TOOL_NAME
+                )
+            ][0]
+            self.toolbar._groups["io"].remove(action)
+            self.toolbar.removeAction(action)
+            action.setParent(None)
+
+        self.toolmanager.add_tool(
+            CSV_TOOL_NAME,
             ExportData,
             parent=self,
             plot_values=self.data,
             labels_type=self.labels_type,
             bands=self.labels if self.labels_type == LabelType.CUSTOM_STR else x_values,
         )
-        toolbar.add_tool("CSV", "io", 1)
-        if self.canvas:
-            self.grid_layout.replaceWidget(self.canvas, canvas)
-            self.grid_layout.replaceWidget(self.toolbar, toolbar)
-        else:
-            self.grid_layout.addWidget(canvas)
-            self.grid_layout.addWidget(toolbar)
-        self.canvas = canvas
-        self.toolbar = toolbar
+        self.toolbar.add_tool(CSV_TOOL_NAME, "io", 1)
+
+        if self.status_label.isVisible():
+            self.status_label.setVisible(False)
+            self.grid_layout.removeWidget(self.status_label)
+            self.grid_layout.addWidget(self.canvas)
+            self.grid_layout.addWidget(self.toolbar)
+            self.canvas.setVisible(True)
+            self.toolbar.setVisible(True)
 
     def show_spectrum_bg(
         self, ax: Axes, values: AreaValues | PixelValues, x_values: NDArray[np.float64]
