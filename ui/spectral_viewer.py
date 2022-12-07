@@ -1,6 +1,7 @@
 import csv
 from dataclasses import dataclass
 from math import ceil
+from pathlib import Path
 from typing import Literal, Optional
 
 import matplotlib.backend_tools
@@ -175,6 +176,9 @@ class SpectralViewer(QWidget):
         toolbar = ToolbarQt(toolmanager, self)
         matplotlib.backend_tools.add_tools_to_manager(self.toolmanager)
         matplotlib.backend_tools.add_tools_to_container(toolbar)
+        toolmanager.remove_tool("fullscreen")
+        toolmanager.remove_tool("quit")
+        toolmanager.remove_tool("quit_all")
         toolmanager.add_tool(
             "CSV",
             ExportData,
@@ -183,7 +187,7 @@ class SpectralViewer(QWidget):
             labels_type=self.labels_type,
             bands=self.labels if self.labels_type == LabelType.CUSTOM_STR else x_values,
         )
-        toolbar.add_tool("CSV", "")
+        toolbar.add_tool("CSV", "io", 1)
         if self.canvas:
             self.grid_layout.replaceWidget(self.canvas, canvas)
             self.grid_layout.replaceWidget(self.toolbar, toolbar)
@@ -288,7 +292,9 @@ class ExportData(ToolBase):
 
     default_keymap = ["C"]
     description = "Export plot as CSV"
-    image = "save"
+    image = (
+        Path(__file__).parent.joinpath("../style/icons/export_csv").resolve().as_posix()
+    )
 
     def __init__(
         self,
@@ -307,7 +313,7 @@ class ExportData(ToolBase):
 
     def trigger(self, *args, **kwargs) -> None:
         out_path, _filter = QFileDialog.getSaveFileName(
-            self.parent, "Save CSV", "", "CSV files (*.csv *.txt)"
+            self.parent, "Choose a filename to export to", "", "CSV files (*.csv *.txt)"
         )
         if not out_path:
             return
