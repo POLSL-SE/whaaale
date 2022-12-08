@@ -77,7 +77,7 @@ class SpectralViewer(QWidget):
 
         self.fig = Figure(tight_layout=True)
         self.canvas = FigureCanvas(self.fig)
-        # set focus to enable keyboard shortcuts
+        # Set focus to enable keyboard shortcuts
         self.canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.toolmanager = ToolManager(self.fig)
         self.toolbar = ToolbarQt(self.toolmanager, self)
@@ -88,7 +88,7 @@ class SpectralViewer(QWidget):
 
         not_implemented_tools = ["fullscreen", "quit", "quit_all"]
         for tool in not_implemented_tools:
-            # This will print errors the console, because there are no buttons on the toolbar for these
+            # This will print errors to the console, because there are no buttons on the toolbar for these
             self.toolmanager.remove_tool(tool)
 
         grid_layout = QGridLayout()
@@ -192,7 +192,7 @@ class SpectralViewer(QWidget):
         prev_CSV_tool = CSV_TOOL_NAME in self.toolmanager.tools
         if prev_CSV_tool:
             self.toolmanager.remove_tool(CSV_TOOL_NAME)
-            # ToolManager.remove_tool triggers an action which removes the item from the toolbar
+            # ToolManager.remove_tool triggers an action which removes the item from the toolbar,
             # but remove_toolitem leaves the action in group and keeps itself as its parent
             # This workaround may break when remove_toolitem gets fixed.
             # self.toolbar.actions() can be used instead of the group, but may potentially find another action with no default widget
