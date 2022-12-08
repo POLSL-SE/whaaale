@@ -8,7 +8,7 @@ import numpy.typing as npt
 from osgeo import gdal
 from PyQt6.QtWidgets import QInputDialog, QWidget
 
-from lib import HsImage, ScalarType
+from lib import HsImage, LabelType, ScalarType
 from loaders.abstract import AbstractFileLoader
 from utils import staticproperty
 
@@ -31,6 +31,7 @@ class ENVILoader(AbstractFileLoader):
         # set pixel interleaving, so that bands will be the third dimension
         data: npt.NDArray = dataset.ReadAsArray(interleave="pixel")
         labels = None
+        labels_type = LabelType.AUTO
         if "ENVI" in dataset.GetMetadataDomainList():
             metadata: dict[str, str] = dataset.GetMetadata("ENVI")
             if "_wavelength" in metadata:
@@ -38,12 +39,17 @@ class ENVILoader(AbstractFileLoader):
                     x.strip(whitespace + "{}")
                     for x in metadata["_wavelength"].split(",")
                 ]
+                try:
+                    [float(x) for x in labels]
+                    labels_type = LabelType.WAVELENGTH
+                except ValueError:
+                    labels_type = LabelType.CUSTOM_STR
 
         max_bpp = data.itemsize * 8
         bpp = ENVILoader.get_bpp(data, max_bpp, parent)
         if bpp is None:
             return
-        image = HsImage(data, bpp, labels)
+        image = HsImage(data, bpp, labels, labels_type)
         return image
 
     @staticmethod

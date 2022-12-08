@@ -1,4 +1,5 @@
-from typing import Generic, TypeAlias, TypeVar
+from enum import Enum
+from typing import Generic, Optional, TypeAlias, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -7,11 +8,32 @@ Coordinates: TypeAlias = tuple[int, int]
 ScalarType = TypeVar("ScalarType", bound=np.generic, covariant=True)
 
 
+class LabelType(Enum):
+    """Describes the origin of image labels.
+
+    The following values are available:
+    - `AUTO`
+    - `WAVELENGTH`
+    - `CUSTOM_STR`
+    """
+
+    AUTO = 0
+    """An integer sequence generated automatically, convertible to `int`, same as `list(range(n_bands))`"""
+    WAVELENGTH = 1
+    """Floating point numbers representing wavelengths (in nm), convertible to `float`"""
+    CUSTOM_STR = 2
+    """Custom string labels, conversion to numeric type should not be attempted"""
+
+
 class HsImage(Generic[ScalarType]):
     """Hyperspectral image data"""
 
     def __init__(
-        self, data: npt.NDArray[ScalarType], bpp: int, labels: list[str] | None = None
+        self,
+        data: npt.NDArray[ScalarType],
+        bpp: int,
+        labels: Optional[list[str]] = None,
+        labels_type: Optional[LabelType] = None,
     ) -> None:
         if data.ndim != 3:
             raise ValueError('"data" parameter must have 3 dimensions')
@@ -19,14 +41,23 @@ class HsImage(Generic[ScalarType]):
         bands = data.shape[2]
         if labels is None:
             labels = [str(x) for x in range(bands)]
-        elif len(labels) != bands:
-            raise ValueError("Number of labels must be equal to the number of bands")
+            labels_type = LabelType.AUTO
+        else:
+            if len(labels) != bands:
+                raise ValueError(
+                    "Number of labels must be equal to the number of bands"
+                )
+            if labels_type is None:
+                # `CUSTOM_STR` is a safe fallback value
+                labels_type = LabelType.CUSTOM_STR
 
         self.data = data
         self.bpp = bpp
         """Bits per pixel"""
         self.labels = labels
         """Labels for all bands"""
+        self.labels_type = labels_type
+        """Origin and type of labels"""
         self.bands = bands
         """Number of bands in the image"""
 

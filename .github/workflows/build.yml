@@ -24,7 +24,7 @@ jobs:
 
       # Build
       - name: Build
-        run: pyinstaller --noupx --add-binary "$(python -c 'import PyQt6 as q; print(q.__path__[0])')/Qt6/lib/libQt6XcbQpa.so.6":. whaaale.py
+        run: pyinstaller --noupx --add-data "style/:style/" --add-binary "$(python -c 'import PyQt6 as q; print(q.__path__[0])')/Qt6/lib/libQt6XcbQpa.so.6":. whaaale.py
 
       # Package and upload
       - name: Package and compress
@@ -51,7 +51,7 @@ jobs:
 
       # Build
       - name: Build
-        run: pyinstaller --noconsole --noupx whaaale.py
+        run: pyinstaller --noconsole --noupx --add-data "style/;style/" whaaale.py
 
       # Upload
       - uses: actions/upload-artifact@v3
