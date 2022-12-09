@@ -1,4 +1,5 @@
 from enum import Enum
+from math import inf
 from typing import Generic, Optional, TypeAlias, TypeVar
 
 import numpy as np
@@ -97,3 +98,38 @@ class HsImage(Generic[ScalarType]):
         """Returns three selected bands of the image."""
         assert self.bands >= 3
         return self.data[:, :, (r_inx, g_idx, b_idx)]
+
+    def closest_rgb_idx(self):
+        """Returns indexes of bands with wavelengths closest to RGB pixel frequencies or `None`."""
+        if self.labels_type != LabelType.WAVELENGTH:
+            return
+
+        R_WAVELENGTH = 630
+        G_WAVELENGTH = 532
+        B_WAVELENGTH = 465
+        diff_r = inf
+        diff_g = inf
+        diff_b = inf
+        r_idx = 0
+        g_idx = 0
+        b_idx = 0
+        try:
+            for i, l in enumerate(self.labels):
+                lf = float(l)
+                dr = abs(R_WAVELENGTH - lf)
+                dg = abs(G_WAVELENGTH - lf)
+                db = abs(B_WAVELENGTH - lf)
+                if dr < diff_r:
+                    diff_r = dr
+                    r_idx = i
+                if dg < diff_g:
+                    diff_g = dg
+                    g_idx = i
+                if db < diff_b:
+                    diff_b = db
+                    b_idx = i
+        except ValueError:
+            return
+
+        if max(diff_r, diff_g, diff_b) < 30:
+            return r_idx, g_idx, b_idx
