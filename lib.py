@@ -127,7 +127,7 @@ class HsImage(Generic[ScalarType]):
             threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
         else:
             threshold = threshold_percent / 100.0
-        flattened = self.normalise(self.data).reshape((h * w, b))
+        flattened = self.normalised().reshape((h * w, b))
         mse: npt.NDArray[np.float_] = (
             np.square(flattened - base).mean(axis=1).reshape((h, w))
         )
@@ -179,9 +179,9 @@ class HsImage(Generic[ScalarType]):
         if max(diff_r, diff_g, diff_b) < 30:
             return r_idx, g_idx, b_idx
 
-    def normalise(self, data: npt.NDArray[ScalarType]):
-        """Normalise floating point data to [0, 1] range. Integer data is left unchanged."""
+    def normalised(self):
+        """Returns image data normalised to [0, 1] range if the data is integer. Integer data is left unchanged."""
         if self.norm_div is None or self.norm_min is None:
-            return data
+            return self.data
         else:
-            return (data - self.norm_min) / self.norm_div
+            return (self.data - self.norm_min) / self.norm_div
