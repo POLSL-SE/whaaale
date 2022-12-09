@@ -5,8 +5,22 @@ import numpy as np
 from PyQt6 import QtGui
 from PyQt6.QtCharts import QChart, QChartView, QLineSeries
 from PyQt6.QtGui import QPainter, QAction, QColor
-from PyQt6.QtWidgets import QApplication, QMainWindow, QPushButton, QMenuBar, QMenu, QFrame, QGridLayout, QVBoxLayout, QHBoxLayout, QWidget, QSlider, QLabel, QComboBox
-from PyQt6.QtCore import Qt 
+from PyQt6.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QPushButton,
+    QMenuBar,
+    QMenu,
+    QFrame,
+    QGridLayout,
+    QVBoxLayout,
+    QHBoxLayout,
+    QWidget,
+    QSlider,
+    QLabel,
+    QComboBox,
+)
+from PyQt6.QtCore import Qt
 
 
 class MainWindow(QMainWindow):
@@ -17,14 +31,14 @@ class MainWindow(QMainWindow):
         self.show()
 
     def setup_ui(self):
-        layout =  QGridLayout()
+        layout = QGridLayout()
         toolbar1 = QHBoxLayout()
         toolbar2 = QVBoxLayout()
         toolbar3 = QGridLayout()
         toolbar4 = QGridLayout()
         viewer = QHBoxLayout()
         spectrum_graph = QHBoxLayout()
-        layout.addLayout(toolbar1, 0, 0, 2, 2) # row, column, rowSpan, columnSpan
+        layout.addLayout(toolbar1, 0, 0, 2, 2)  # row, column, rowSpan, columnSpan
         layout.addLayout(toolbar2, 2, 0, 2, 2)
         layout.addLayout(toolbar3, 4, 0, 2, 2)
         layout.addLayout(toolbar4, 6, 0, 2, 2)
@@ -36,11 +50,11 @@ class MainWindow(QMainWindow):
         # ****** Buttons ******
 
         self.single_band_button = QPushButton(self)
-        self.single_band_button.setText('Single')
+        self.single_band_button.setText("Single")
         self.single_band_button.clicked.connect(self.single_band_click)
 
         self.fake_col_button = QPushButton(self)
-        self.fake_col_button.setText('Fake color')
+        self.fake_col_button.setText("Fake color")
         self.fake_col_button.clicked.connect(self.fake_col_click)
 
         # ****** Magic Wand ******
@@ -49,11 +63,11 @@ class MainWindow(QMainWindow):
         self.label_wand.setFixedSize(90, 20)
 
         self.button_magic = QPushButton(self)
-        self.button_magic.setText('Magic wand')
+        self.button_magic.setText("Magic wand")
         self.button_magic.clicked.connect(self.magic_wand_click)
 
         slider_magic_wand = QSlider(Qt.Orientation.Horizontal, self)
-        slider_magic_wand.setGeometry(50,50, 200, 50)
+        slider_magic_wand.setGeometry(50, 50, 200, 50)
         slider_magic_wand.setMinimum(0)
         slider_magic_wand.setMaximum(20)
         slider_magic_wand.setTickPosition(QSlider.TickPosition.TicksBelow)
@@ -65,23 +79,23 @@ class MainWindow(QMainWindow):
         self.label_spectral.setFixedSize(60, 20)
 
         self.select_point = QPushButton(self)
-        self.select_point.setText('Select point')
+        self.select_point.setText("Select point")
         self.select_point.clicked.connect(self.select_point_click)
 
         self.select_area = QPushButton(self)
-        self.select_area.setText('Select area')
+        self.select_area.setText("Select area")
         self.select_area.clicked.connect(self.select_area_click)
 
         self.label_export = QLabel("Export", self)
         self.label_export.setFixedSize(60, 20)
 
         self.export_png = QPushButton(self)
-        self.export_png.setText('PNG')
+        self.export_png.setText("PNG")
         self.export_png.clicked.connect(self.export_click)
         self.export_png.setFixedSize(35, 35)
 
         self.export_csv = QPushButton(self)
-        self.export_csv.setText('CSV')
+        self.export_csv.setText("CSV")
         self.export_csv.clicked.connect(self.export_click)
         self.export_csv.setFixedSize(35, 35)
 
@@ -115,7 +129,6 @@ class MainWindow(QMainWindow):
         frame3.setFixedSize(30, 30)
         frame3.setStyleSheet("background-color:blue")
 
-
         # ****** Add elements to layout ******
 
         # toolbar1.addWidget(frame)
@@ -129,7 +142,7 @@ class MainWindow(QMainWindow):
         toolbar3.addWidget(self.label_spectral, 0, 0)
         toolbar3.addWidget(self.select_point, 1, 0)
         toolbar3.addWidget(self.select_area, 2, 0)
-        toolbar3.addWidget(self.label_export,3,0)
+        toolbar3.addWidget(self.label_export, 3, 0)
         toolbar3.addWidget(self.export_png, 4, 0)
         toolbar3.addWidget(self.export_csv, 4, 1)
 
@@ -149,7 +162,7 @@ class MainWindow(QMainWindow):
         widget.resize(100, 100)
         widget.setLayout(layout)
         self.setCentralWidget(widget)
-        
+
         # ****** Menu bar ******
         self._createMenuBar()
 
@@ -175,7 +188,7 @@ class MainWindow(QMainWindow):
 
         return chart_view
         # self.chart_view = chart_view
-        # self.setCentralWidget(self.chart_view)      
+        # self.setCentralWidget(self.chart_view)
 
     def _createMenuBar(self):
         menuBar = QMenuBar(self)
@@ -211,24 +224,22 @@ class MainWindow(QMainWindow):
     """Methods responsible for handling interaction with buttons etc."""
 
     def single_band_click(self):
-        print('clicked single band')
+        print("clicked single band")
 
     def fake_col_click(self):
-        print('clicked fake color')
+        print("clicked fake color")
 
     def magic_wand_click(self):
-        print('clicked magic wand')
+        print("clicked magic wand")
 
     def select_point_click(self):
-        print('clicked select point')
+        print("clicked select point")
 
     def select_area_click(self):
-        print('clicked select area')
+        print("clicked select area")
 
     def export_click(self):
-        print('clicked export')
-
-
+        print("clicked export")
 
 
 def main():
