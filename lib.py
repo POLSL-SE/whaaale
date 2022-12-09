@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 Coordinates: TypeAlias = tuple[int, int]
-ScalarType = TypeVar("ScalarType", bound=np.generic, covariant=True)
+ScalarType = TypeVar("ScalarType", np.floating, np.signedinteger, np.unsignedinteger)
 
 
 class LabelType(Enum):
@@ -26,18 +26,57 @@ class LabelType(Enum):
     """Custom string labels, conversion to numeric type should not be attempted"""
 
 
+class NormalisationMethod(Enum):
+    """Defines how floating point data should be normalised."""
+
+    GLOBAL = 1
+    """Global maximum and minimum (excluding negative values) should be used as 1 and 0"""
+    BAND = 2
+    """Maximum and minimum must be separate for each band"""
+
+
 class HsImage(Generic[ScalarType]):
     """Hyperspectral image data"""
 
     def __init__(
         self,
         data: npt.NDArray[ScalarType],
-        bpp: int,
+        bpp: Optional[int] = None,
+        normalisation: Optional[NormalisationMethod] = None,
         labels: Optional[list[str]] = None,
         labels_type: Optional[LabelType] = None,
     ) -> None:
         if data.ndim != 3:
             raise ValueError('"data" parameter must have 3 dimensions')
+
+        pos_mask = data >= 0
+
+        if (data.dtype.kind == "i" or data.dtype.kind == "u") and bpp is None:
+            raise RuntimeError("Integer data loaded, but bpp is None")
+        if data.dtype.kind == "f":
+            match normalisation:
+                case None:
+                    raise RuntimeError(
+                        "Floating point dara loaded, but normalisation is None"
+                    )
+                case NormalisationMethod.GLOBAL:
+                    ax = None
+                case NormalisationMethod.BAND:
+                    ax = (0, 1)
+
+            norm_min = np.amin(data, axis=ax, initial=np.inf, where=pos_mask)
+            norm_max = np.amax(data, axis=ax, initial=-np.inf, where=pos_mask)
+
+            if ax is None and (norm_min == np.inf or norm_max == -np.inf):
+                raise ValueError(
+                    "Image contains invalid data - all values are negative or infinity."
+                )
+            if ax is not None:
+                norm_min[norm_min == np.inf] = 0
+                norm_max[norm_max == -np.inf] = 0
+
+            self.norm_div: Optional[npt.NDArray | float] = norm_max - norm_min
+            self.norm_min: Optional[npt.NDArray | float] = norm_min
 
         bands = data.shape[2]
         if labels is None:
@@ -53,14 +92,17 @@ class HsImage(Generic[ScalarType]):
                 labels_type = LabelType.CUSTOM_STR
 
         self.data = data
+        self.normalisation = normalisation
         self.bpp = bpp
-        """Bits per pixel"""
+        """Bits per pixel for integer data"""
         self.labels = labels
         """Labels for all bands"""
         self.labels_type = labels_type
         """Origin and type of labels"""
         self.bands = bands
         """Number of bands in the image"""
+        self.pos_mask = pos_mask
+        """A boolean mask of non-negative data"""
 
     def get_pixel(self, x: int, y: int) -> npt.NDArray[ScalarType]:
         """Returns a single pixel of the image as a 1D `ndarray`."""
@@ -81,8 +123,11 @@ class HsImage(Generic[ScalarType]):
         """Returns a truth mask of pixels similar to the one with `base_coordinates` within threshold defined as percent of the maximum MSE (depends on `bpp`)."""
         base = self.data[base_coordinates]
         h, w, b = self.data.shape
-        threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
-        flattened = self.data.reshape((h * w, b))
+        if self.bpp is not None:
+            threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
+        else:
+            threshold = threshold_percent / 100.0
+        flattened = self.normalise(self.data).reshape((h * w, b))
         mse: npt.NDArray[np.float_] = (
             np.square(flattened - base).mean(axis=1).reshape((h, w))
         )
@@ -133,3 +178,10 @@ class HsImage(Generic[ScalarType]):
 
         if max(diff_r, diff_g, diff_b) < 30:
             return r_idx, g_idx, b_idx
+
+    def normalise(self, data: npt.NDArray[ScalarType]):
+        """Normalise floating point data to [0, 1] range. Integer data is left unchanged."""
+        if self.norm_div is None or self.norm_min is None:
+            return data
+        else:
+            return (data - self.norm_min) / self.norm_div

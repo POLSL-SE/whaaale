@@ -1,14 +1,12 @@
 import os
-from math import ceil, log2
 from string import whitespace
 from typing import Optional
 
-import numpy as np
 import numpy.typing as npt
 from osgeo import gdal
-from PyQt6.QtWidgets import QInputDialog, QWidget
+from PyQt6.QtWidgets import QWidget
 
-from lib import HsImage, LabelType, ScalarType
+from lib import HsImage, LabelType
 from loaders.abstract import AbstractFileLoader
 from utils import staticproperty
 
@@ -45,28 +43,22 @@ class ENVILoader(AbstractFileLoader):
                 except ValueError:
                     labels_type = LabelType.CUSTOM_STR
 
-        max_bpp = data.itemsize * 8
-        bpp = ENVILoader.get_bpp(data, max_bpp, parent)
-        if bpp is None:
-            return
-        image = HsImage(data, bpp, labels, labels_type)
-        return image
+        if data.dtype.kind == "f":
+            bpp = None
+            normalisation = ENVILoader.get_normalisation(parent)
+            if normalisation is None:
+                return
+        else:
+            bpp = ENVILoader.get_bpp(data, parent)
+            if bpp is None:
+                return
+            normalisation = None
 
-    @staticmethod
-    def get_bpp(
-        data: npt.NDArray[ScalarType], max: int, parent: QWidget
-    ) -> Optional[int]:
-        max_val: ScalarType = np.max(data)
-        min_bpp = ceil(log2(max_val))
-
-        bpp, ok = QInputDialog.getInt(
-            parent,
-            "ENVI file loader",
-            "Bits per pixel:",
-            min=min_bpp,
-            max=max,
+        image = HsImage(
+            data,
+            bpp=bpp,
+            normalisation=normalisation,
+            labels=labels,
+            labels_type=labels_type,
         )
-
-        if not ok:
-            return
-        return bpp
+        return image
