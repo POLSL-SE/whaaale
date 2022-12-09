@@ -16,16 +16,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Whaaale")
         self.show()
 
-    # Overridden function so we can adjust gui to the size of the window
-    # Might be redundant
-    # def resizeEvent(self, a0: QtGui.QResizeEvent) -> None:
-    #     self.width = self.geometry().width()
-    #     self.height = self.geometry().height()
-    #     # self.size1 = int(0.15 * self.width)
-    #     print("Height: ", self.height)
-    #     print("Width: ", self.width) 
-    #     return super().resizeEvent(a0)
-
     def setup_ui(self):
         layout =  QGridLayout()
         toolbar1 = QHBoxLayout()
@@ -42,14 +32,6 @@ class MainWindow(QMainWindow):
         layout.addLayout(spectrum_graph, 4, 2, 4, 6)
 
         # ****** Elements of layout ******
-
-        # ****** Frames ******
-
-        # frame = QFrame(self)
-        # frame.setFrameShape(QFrame.Shape.StyledPanel)
-        # frame.setLineWidth(3)
-        # frame.resize(100, 100)
-        # frame.move(200, 200)
 
         # ****** Buttons ******
 
@@ -83,15 +65,13 @@ class MainWindow(QMainWindow):
         self.label_spectral = QLabel("Spectral curve", self)
         self.label_spectral.setFixedSize(60, 20)
 
-        select_spectral_point = QComboBox()
-        select_spectral_point.addItem("Option 1")
-        select_spectral_point.addItem("Option 2")
-        select_spectral_point.addItem("Option 3")
+        self.select_point = QPushButton(self)
+        self.select_point.setText('Select point')
+        self.select_point.clicked.connect(self.single_band)
 
-        select_spectral_area = QComboBox()
-        select_spectral_area.addItem("Option 1")
-        select_spectral_area.addItem("Option 2")
-        select_spectral_area.addItem("Option 3")
+        self.select_area = QPushButton(self)
+        self.select_area.setText('Select area')
+        self.select_area.clicked.connect(self.fake_col)
 
         self.export_png = QPushButton(self)
         self.export_png.setText('PNG')
@@ -141,8 +121,8 @@ class MainWindow(QMainWindow):
         toolbar2.addWidget(slider_magic_wand)
 
         toolbar3.addWidget(self.label_spectral, 0, 0)
-        toolbar3.addWidget(select_spectral_point, 1, 0)
-        toolbar3.addWidget(select_spectral_area, 2, 0)
+        toolbar3.addWidget(self.select_point, 1, 0)
+        toolbar3.addWidget(self.select_area, 2, 0)
         toolbar3.addWidget(self.export_png, 3, 0)
         toolbar3.addWidget(self.export_csv, 3, 1)
 
