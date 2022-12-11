@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
 )
 from PyQt6.QtCore import Qt
+import sys
 
 
 class MainWindow(QMainWindow):
@@ -69,7 +70,7 @@ class MainWindow(QMainWindow):
         slider_magic_wand = QSlider(Qt.Orientation.Horizontal, self)
         slider_magic_wand.setGeometry(50, 50, 200, 50)
         slider_magic_wand.setMinimum(0)
-        slider_magic_wand.setMaximum(20)
+        slider_magic_wand.setMaximum(100)
         slider_magic_wand.setTickPosition(QSlider.TickPosition.TicksBelow)
         slider_magic_wand.setTickInterval(2)
 
@@ -131,6 +132,8 @@ class MainWindow(QMainWindow):
 
         # ****** Add elements to layout ******
 
+        """Change the order of toolbars; maybe select_point/area to toolbar1?"""
+
         # toolbar1.addWidget(frame)
         toolbar1.addWidget(self.single_band_button)
         toolbar1.addWidget(self.fake_col_button)
@@ -139,9 +142,13 @@ class MainWindow(QMainWindow):
         toolbar2.addWidget(self.button_magic)
         toolbar2.addWidget(slider_magic_wand)
 
-        toolbar3.addWidget(self.label_spectral, 0, 0)
-        toolbar3.addWidget(self.select_point, 1, 0)
-        toolbar3.addWidget(self.select_area, 2, 0)
+        toolbar2.addWidget(self.label_spectral)
+        toolbar2.addWidget(self.select_point)
+        toolbar2.addWidget(self.select_area)
+
+        # toolbar3.addWidget(self.label_spectral, 0, 0)
+        # toolbar3.addWidget(self.select_point, 1, 0)
+        # toolbar3.addWidget(self.select_area, 2, 0)
         toolbar3.addWidget(self.label_export, 3, 0)
         toolbar3.addWidget(self.export_png, 4, 0)
         toolbar3.addWidget(self.export_csv, 4, 1)
@@ -198,27 +205,16 @@ class MainWindow(QMainWindow):
         helpMenu = menuBar.addMenu("&Help")
 
         # File menu
-        action_new = QAction("New", self)
-        action_new.triggered.connect(self.fake_col_click)
         action_open = QAction("Open", self)
-        action_open.triggered.connect(self.fake_col_click)
+        action_open.triggered.connect(self.open_click)
         action_exit = QAction("Exit", self)
-        action_exit.triggered.connect(self.fake_col_click)
-        fileMenu.addAction(action_new)
+        action_exit.triggered.connect(self.exit_click)
         fileMenu.addAction(action_open)
         fileMenu.addAction(action_exit)
 
-        # Edit menu
-        action_view1 = QAction("Option 1", self)
-        action_view1.triggered.connect(self.fake_col_click)
-        action_view2 = QAction("Option 2", self)
-        action_view2.triggered.connect(self.fake_col_click)
-        editMenu.addAction(action_view1)
-        editMenu.addAction(action_view2)
-
         # Help menu
         action_help = QAction("Help", self)
-        action_help.triggered.connect(self.fake_col_click)
+        action_help.triggered.connect(self.help_click)
         helpMenu.addAction(action_help)
 
     """Methods responsible for handling interaction with buttons etc."""
@@ -240,6 +236,19 @@ class MainWindow(QMainWindow):
 
     def export_click(self):
         print("clicked export")
+
+    def open_click(self):
+        print("clicked open in menu bar")
+
+    def help_click(self):
+        print("clicked help in menu bar")
+
+    def exit_click(self):
+        # Dedicated function cuz there is no possibility
+        # to connect sys.exit() directly to button in menu bar
+        print("clicked exit in menu bar")
+        # sys.exit() to definitely terminate the program
+        sys.exit()
 
 
 def main():
