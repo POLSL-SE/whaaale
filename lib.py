@@ -1,6 +1,6 @@
 from enum import Enum
 from math import inf
-from typing import Generic, Optional, TypeAlias, TypeVar
+from typing import Generic, Optional, TypeAlias, TypeVar, Callable, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -75,8 +75,10 @@ class HsImage(Generic[ScalarType]):
                 norm_min[norm_min == np.inf] = 0
                 norm_max[norm_max == -np.inf] = 0
 
-            self.norm_div: Optional[npt.NDArray | float] = norm_max - norm_min
-            self.norm_min: Optional[npt.NDArray | float] = norm_min
+            self.norm_div: Optional[npt.NDArray[np.floating] | float] = (
+                norm_max - norm_min
+            )
+            self.norm_min: Optional[npt.NDArray[np.floating] | float] = norm_min
 
         bands = data.shape[2]
         if labels is None:
@@ -138,11 +140,11 @@ class HsImage(Generic[ScalarType]):
         return self.data[:, :, idx]
 
     def get_RGB_bands(
-        self, r_inx: int, g_idx: int, b_idx: int
+        self, r_idx: int, g_idx: int, b_idx: int
     ) -> npt.NDArray[ScalarType]:
         """Returns three selected bands of the image."""
         assert self.bands >= 3
-        return self.data[:, :, (r_inx, g_idx, b_idx)]
+        return self.data[:, :, (r_idx, g_idx, b_idx)]
 
     def closest_rgb_idx(self):
         """Returns indexes of bands with wavelengths closest to RGB pixel frequencies or `None`."""
@@ -185,3 +187,58 @@ class HsImage(Generic[ScalarType]):
             return self.data
         else:
             return (self.data - self.norm_min) / self.norm_div
+
+    def get_norm_prop(self, *args: tuple[int] | tuple[int, int, int]):
+        if self.normalisation == NormalisationMethod.GLOBAL:
+            if self.norm_min is None or self.norm_div is None:
+                raise RuntimeError("Global normalisation, but values are None")
+            return self.norm_min, self.norm_div
+        elif isinstance(self.norm_min, np.ndarray) and isinstance(
+            self.norm_div, np.ndarray
+        ):
+            if len(args) == 1:
+                return self.norm_min[*args], self.norm_div[*args]
+            else:
+                return (
+                    self.norm_min[
+                        args,
+                    ],
+                    self.norm_div[
+                        args,
+                    ],
+                )
+
+    @staticmethod
+    def _normalise(
+        func: Callable[[Any, int], npt.NDArray]
+        | Callable[[Any, int, int, int], npt.NDArray]
+    ):
+        def wrapper(self, *args):
+            norm_data = self.get_norm_prop(*args)
+            if norm_data is None:
+                return func(self, *args)
+            norm_min, norm_max = norm_data
+            return (func(self, *args) - norm_min) / norm_max
+
+        return wrapper
+
+    @_normalise
+    def get_band_normalised(self, idx: int):
+        """Returns a single band of the image normalised to [0, 1]."""
+        return self.get_band(idx)
+
+    @_normalise
+    def get_RGB_bands_normalised(self, r_idx: int, g_idx: int, b_idx: int):
+        """Returns three selected bands of the image normalised to [0, 1]."""
+        return self.get_RGB_bands(r_idx, g_idx, b_idx)
+
+    def as_8bpp(self, data: npt.NDArray[np.signedinteger | np.unsignedinteger]):
+        assert data.dtype.kind == "i" or data.dtype.kind == "u"
+        assert self.bpp and self.bpp >= 8
+
+        bpp_diff = self.bpp - 8
+        # Type conversion to uint8 is time consuming, but Qt expects data in such format.
+        # We cant just pass 32-bit values capped at 255
+        rounded = ((data + (1 << (bpp_diff - 1))) >> bpp_diff).astype(np.uint8)
+        rounded[rounded < 0] = 0
+        return rounded
