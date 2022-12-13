@@ -1,6 +1,6 @@
 from enum import Enum
 from math import inf
-from typing import Generic, Optional, TypeAlias, TypeVar, Callable, Any
+from typing import Any, Callable, Generic, Optional, TypeAlias, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -186,7 +186,9 @@ class HsImage(Generic[ScalarType]):
         if self.norm_div is None or self.norm_min is None:
             return self.data
         else:
-            return (self.data - self.norm_min) / self.norm_div
+            scaled = (self.data - self.norm_min) / self.norm_div
+            scaled[~self.pos_mask] = 0
+            return scaled
 
     def get_norm_prop(self, *args: tuple[int] | tuple[int, int, int]):
         if self.normalisation == NormalisationMethod.GLOBAL:
@@ -218,7 +220,9 @@ class HsImage(Generic[ScalarType]):
             if norm_data is None:
                 return func(self, *args)
             norm_min, norm_max = norm_data
-            return (func(self, *args) - norm_min) / norm_max
+            scaled = (func(self, *args) - norm_min) / norm_max
+            scaled[scaled < 0] = 0
+            return scaled
 
         return wrapper
 
