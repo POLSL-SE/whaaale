@@ -71,3 +71,27 @@ class AbstractFileLoader(ABC):
 
         if ok:
             return bpp
+
+    @staticmethod
+    def fix_array_order(data: npt.NDArray[ScalarType], parent: QWidget):
+        HWB = "[height, width, bands]"
+        WHB = "[width, height, bands]"
+        BHW = "[bands, height, width]"
+        BWH = "[bands, width, height]"
+
+        option, ok = QInputDialog.getItem(
+            parent,
+            "Whaaale - open file",
+            f"Array order [{', '.join([str(x) for x in data.shape])}]:",
+            [HWB, WHB, BHW, BWH],
+            editable=False,
+        )
+
+        if option == HWB:
+            return data
+        elif option == WHB:
+            return data.transpose((1, 0, 2))
+        elif option == BHW:
+            return data.transpose((1, 2, 0))
+        elif option == BWH:
+            return data.transpose((2, 1, 0))

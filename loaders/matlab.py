@@ -40,6 +40,12 @@ class MatlabLoader(AbstractFileLoader):
                 f"Only integer and floating point types are supported, file uses {var.dtype.name}."
             )
 
+        reordered = MatlabLoader.fix_array_order(var, parent)
+        if reordered is None:
+            return
+        else:
+            var = reordered
+
         if var.dtype.kind == "f":
             bpp = None
             normalisation = MatlabLoader.get_normalisation(parent)
@@ -71,6 +77,13 @@ class MatlabLoader(AbstractFileLoader):
             raise NotImplementedError(
                 f"Only integer types are supported, file uses {var.dtype.name}"
             )
+
+        reordered = MatlabLoader.fix_array_order(var, parent)
+        if reordered is None:
+            return
+        else:
+            var = reordered
+
         bpp = MatlabLoader.get_bpp(var, parent)
         if bpp is None:
             return
