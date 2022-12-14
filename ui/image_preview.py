@@ -69,3 +69,17 @@ class ImagePreview(QWidget):
 
     def render_single_f(self, band: npt.NDArray[np.floating]):
         self.render_single((band * 255).astype(np.uint8))
+
+    def render_similar(self, band: npt.NDArray[np.uint8], mask: npt.NDArray[np.bool8]):
+        band_3D = np.broadcast_to(band[..., None], band.shape + (3,)).copy()
+        band_3D[mask] = np.array([255, 0, 0])
+        self.img_data = band_3D
+        self.image = QImage(
+            self.img_data.data,
+            self.img_data.shape[1],
+            self.img_data.shape[0],
+            3 * self.img_data.shape[1],
+            QImage.Format.Format_RGB888,
+        )
+        self.pixmap = QPixmap.fromImage(self.image)
+        self.label.setPixmap(self.pixmap)

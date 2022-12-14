@@ -129,7 +129,8 @@ class HsImage(Generic[ScalarType]):
             threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
         else:
             threshold = threshold_percent / 100.0
-        flattened = self.normalised().reshape((h * w, b))
+        # Covert to float to avoid underflow
+        flattened = self.normalised().reshape((h * w, b)).astype(np.float64)
         mse: npt.NDArray[np.float_] = (
             np.square(flattened - base).mean(axis=1).reshape((h, w))
         )
