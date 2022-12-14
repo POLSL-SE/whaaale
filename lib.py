@@ -183,7 +183,7 @@ class HsImage(Generic[ScalarType]):
 
     def normalised(self):
         """Returns image data normalised to [0, 1] range if the data is integer. Integer data is left unchanged."""
-        if self.norm_div is None or self.norm_min is None:
+        if self.normalisation is None:
             return self.data
         else:
             scaled = (self.data - self.norm_min) / self.norm_div
@@ -243,6 +243,9 @@ class HsImage(Generic[ScalarType]):
         bpp_diff = self.bpp - 8
         # Type conversion to uint8 is time consuming, but Qt expects data in such format.
         # We cant just pass 32-bit values capped at 255
-        rounded = ((data + (1 << (bpp_diff - 1))) >> bpp_diff).astype(np.uint8)
+        if bpp_diff:
+            rounded = ((data + (1 << (bpp_diff - 1))) >> bpp_diff).astype(np.uint8)
+        else:
+            rounded = data.astype(np.uint8)
         rounded[rounded < 0] = 0
         return rounded
