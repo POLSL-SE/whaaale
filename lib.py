@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 
 Coordinates: TypeAlias = tuple[int, int]
+"""Coordinates in [x, y] order. Remember that the image is kept in row-major order."""
 ScalarType = TypeVar("ScalarType", np.floating, np.signedinteger, np.unsignedinteger)
 
 
@@ -108,7 +109,7 @@ class HsImage(Generic[ScalarType]):
 
     def get_pixel(self, x: int, y: int) -> npt.NDArray[ScalarType]:
         """Returns a single pixel of the image as a 1D `ndarray`."""
-        return self.data[x, y]
+        return self.data[y, x]
 
     def get_area(self, p1: Coordinates, p2: Coordinates) -> npt.NDArray[ScalarType]:
         """Returns a subarray from the image bounded by `p1` and `p2`."""
@@ -117,13 +118,13 @@ class HsImage(Generic[ScalarType]):
         # Add 1, because ranges don't include the upper bound
         x_max += 1
         y_max += 1
-        return self.data[x_min:x_max, y_min:y_max]
+        return self.data[y_min:y_max, x_min:x_max]
 
     def get_similar(
         self, base_coordinates: Coordinates, threshold_percent: float
     ) -> npt.NDArray[np.bool_]:
         """Returns a truth mask of pixels similar to the one with `base_coordinates` within threshold defined as percent of the maximum MSE (depends on `bpp`)."""
-        base = self.data[base_coordinates]
+        base = self.data[base_coordinates[1], base_coordinates[0]]
         h, w, b = self.data.shape
         if self.bpp is not None:
             threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
