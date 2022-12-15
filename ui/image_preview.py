@@ -57,24 +57,28 @@ class ImagePreview(QWidget):
         self.label.mouseMoveEvent = lambda ev: self._on_mouse_move(ev)
 
     def _on_mouse_down(self, event: QMouseEvent):
-        if self.handler_mouse_down is not None:
+        if self.handler_mouse_down is not None and self.img_data is not None:
             pos = event.position()
             x = int(pos.x())
             y = int(pos.y())
-            self.handler_mouse_down((x, y))
+            self.handler_mouse_down(self.clamp_xy(x, y))
         event.accept()
 
     def _on_mouse_up(self, event: QMouseEvent):
-        if self.handler_mouse_up is not None:
+        if self.handler_mouse_up is not None and self.img_data is not None:
             pos = event.position()
             x = int(pos.x())
             y = int(pos.y())
-            self.handler_mouse_up((x, y))
+            self.handler_mouse_up(self.clamp_xy(x, y))
         event.accept()
 
     def _on_mouse_move(self, event: QMouseEvent):
         if self.rubber_band.isVisible():
-            geometry = QRect.span(self.rubber_band_start, event.position().toPoint())
+            pos = event.position()
+            x = int(pos.x())
+            y = int(pos.y())
+            x, y = self.clamp_xy(x, y)
+            geometry = QRect.span(self.rubber_band_start, QPoint(x, y))
             self.rubber_band.setGeometry(geometry)
         event.accept()
 
@@ -156,3 +160,9 @@ class ImagePreview(QWidget):
         )
         self.pixmap = QPixmap.fromImage(self.image)
         self.label.setPixmap(self.pixmap)
+
+    def clamp_xy(self, x: int, y: int):
+        assert self.img_data is not None
+        x = max(0, min(self.img_data.shape[1], x))
+        y = max(0, min(self.img_data.shape[0], y))
+        return x, y
