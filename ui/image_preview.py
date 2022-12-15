@@ -4,7 +4,14 @@ import numpy as np
 import numpy.typing as npt
 from PyQt6.QtCore import QPoint, QRect, Qt
 from PyQt6.QtGui import QImage, QMouseEvent, QPixmap
-from PyQt6.QtWidgets import QGridLayout, QLabel, QRubberBand, QSizePolicy, QWidget
+from PyQt6.QtWidgets import (
+    QGridLayout,
+    QLabel,
+    QRubberBand,
+    QScrollArea,
+    QSizePolicy,
+    QWidget,
+)
 
 from lib import Coordinates
 
@@ -19,15 +26,22 @@ class ImagePreview(QWidget):
     ) -> None:
         super().__init__(parent, flags)
 
-        self.label = QLabel(self)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.scroll_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+        self.label = QLabel(self.scroll_area)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
         self.label.setText("Open an image")
+        self.scroll_area.setWidget(self.label)
 
         grid_layout = QGridLayout()
-        grid_layout.addWidget(self.label)
+        grid_layout.addWidget(self.scroll_area)
         self.setLayout(grid_layout)
 
         self.rubber_band = QRubberBand(QRubberBand.Shape.Rectangle, self.label)
