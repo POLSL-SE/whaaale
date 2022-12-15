@@ -1,14 +1,18 @@
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import numpy.typing as npt
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QImage, QPixmap
-from PyQt6.QtWidgets import QGridLayout, QLabel, QSizePolicy, QWidget
+from PyQt6.QtCore import QPoint, QRect, Qt
+from PyQt6.QtGui import QImage, QMouseEvent, QPixmap
+from PyQt6.QtWidgets import QGridLayout, QLabel, QRubberBand, QSizePolicy, QWidget
+
+from lib import Coordinates
 
 
 class ImagePreview(QWidget):
     img_data: Optional[npt.NDArray[np.uint8 | np.float32]] = None
+    handler_mouse_down: Optional[Callable[[Coordinates], Any]] = None
+    handler_mouse_up: Optional[Callable[[Coordinates], Any]] = None
 
     def __init__(
         self, parent: Optional[QWidget], flags: Qt.WindowType = Qt.WindowType.Widget
@@ -20,24 +24,76 @@ class ImagePreview(QWidget):
         self.label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.label.setMouseTracking(True)
         self.label.setText("Open an image")
 
         grid_layout = QGridLayout()
         grid_layout.addWidget(self.label)
         self.setLayout(grid_layout)
 
+        self.rubber_band = QRubberBand(QRubberBand.Shape.Rectangle, self.label)
+        self.rubber_band.setVisible(False)
+
+        self._setup_handlers()
+
+    def _setup_handlers(self):
+        # In disabled (default) state mouse movement is tracked only when a button is pressed
+        self.label.setMouseTracking(False)
+        self.label.mousePressEvent = lambda ev: self._on_mouse_down(ev)
+        self.label.mouseReleaseEvent = lambda ev: self._on_mouse_up(ev)
+        self.label.mouseMoveEvent = lambda ev: self._on_mouse_move(ev)
+
+    def _on_mouse_down(self, event: QMouseEvent):
+        if self.handler_mouse_down is not None:
+            pos = event.position()
+            x = int(pos.x())
+            y = int(pos.y())
+            self.handler_mouse_down((x, y))
+        event.accept()
+
+    def _on_mouse_up(self, event: QMouseEvent):
+        if self.handler_mouse_up is not None:
+            pos = event.position()
+            x = int(pos.x())
+            y = int(pos.y())
+            self.handler_mouse_up((x, y))
+        event.accept()
+
+    def _on_mouse_move(self, event: QMouseEvent):
+        if self.rubber_band.isVisible():
+            geometry = QRect.span(self.rubber_band_start, event.position().toPoint())
+            self.rubber_band.setGeometry(geometry)
+        event.accept()
+
+    def register_handlers(
+        self,
+        on_mouse_down: Callable[[Coordinates], Any],
+        on_mouse_up: Callable[[Coordinates], Any],
+    ):
+        self.handler_mouse_down = on_mouse_down
+        self.handler_mouse_up = on_mouse_up
+
+    def draw_rubber_band(self, start: Coordinates):
+        self.rubber_band_start = QPoint(*start)
+        self.rubber_band.move(self.rubber_band_start)
+        self.rubber_band.resize(0, 0)
+        self.rubber_band.setVisible(True)
+
+    def clear_rubber_band(self):
+        self.rubber_band.setVisible(False)
+
     def render_rgb(self, rgb_bands: npt.NDArray[np.uint8]):
         self.img_data = rgb_bands.copy()
+        h, w, _ = self.img_data.shape
         self.image = QImage(
             self.img_data.data,
-            self.img_data.shape[1],
-            self.img_data.shape[0],
-            3 * self.img_data.shape[1],
+            w,
+            h,
+            3 * w,
             QImage.Format.Format_RGB888,
         )
         self.pixmap = QPixmap.fromImage(self.image)
         self.label.setPixmap(self.pixmap)
+        self.label.setFixedSize(w, h)
 
     def render_rgb_f(self, rgb_bands: npt.NDArray[np.floating]):
         img_data = rgb_bands.astype(np.float32)
@@ -47,25 +103,28 @@ class ImagePreview(QWidget):
         ).copy()
         self.image = QImage(
             self.img_data.data,
-            self.img_data.shape[1],
-            self.img_data.shape[0],
-            16 * self.img_data.shape[1],
+            w,
+            h,
+            16 * w,
             QImage.Format.Format_RGBX32FPx4,
         )
         self.pixmap = QPixmap.fromImage(self.image)
         self.label.setPixmap(self.pixmap)
+        self.label.setFixedSize(w, h)
 
     def render_single(self, band: npt.NDArray[np.uint8]):
         self.img_data = band.copy()
+        h, w, _ = self.img_data.shape
         self.image = QImage(
             self.img_data.data,
-            self.img_data.shape[1],
-            self.img_data.shape[0],
-            self.img_data.shape[1],
+            w,
+            h,
+            w,
             QImage.Format.Format_Grayscale8,
         )
         self.pixmap = QPixmap.fromImage(self.image)
         self.label.setPixmap(self.pixmap)
+        self.label.setFixedSize(w, h)
 
     def render_single_f(self, band: npt.NDArray[np.floating]):
         self.render_single((band * 255).astype(np.uint8))
