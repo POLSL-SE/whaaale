@@ -128,7 +128,7 @@ class ImagePreview(QWidget):
 
     def render_single(self, band: npt.NDArray[np.uint8]):
         self.img_data = band.copy()
-        h, w, _ = self.img_data.shape
+        h, w = self.img_data.shape
         self.image = QImage(
             self.img_data.data,
             w,
