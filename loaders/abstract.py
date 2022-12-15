@@ -87,6 +87,9 @@ class AbstractFileLoader(ABC):
             editable=False,
         )
 
+        if not ok:
+            return
+
         if option == HWB:
             return data
         elif option == WHB:
