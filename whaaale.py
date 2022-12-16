@@ -439,10 +439,11 @@ class MainWindow(QMainWindow):
 
 
 def main():
-    if not "QT_QPA_PLATFORM" in os.environ:
-        os.environ["QT_QPA_PLATFORM"] = "windows:darkmode=2"
-    if os.name == "nt" and not "QT_STYLE_OVERRIDE" in os.environ:
-        os.environ["QT_STYLE_OVERRIDE"] = "fusion"
+    if os.name == "nt":
+        if not "QT_QPA_PLATFORM" in os.environ:
+            os.environ["QT_QPA_PLATFORM"] = "windows:darkmode=2"
+        if not "QT_STYLE_OVERRIDE" in os.environ:
+            os.environ["QT_STYLE_OVERRIDE"] = "fusion"
 
     a = QApplication(argv)
     main_window = MainWindow()
