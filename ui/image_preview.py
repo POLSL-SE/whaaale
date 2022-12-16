@@ -168,6 +168,6 @@ class ImagePreview(QWidget):
 
     def clamp_xy(self, x: int, y: int):
         assert self.img_data is not None
-        x = max(0, min(self.img_data.shape[1], x))
-        y = max(0, min(self.img_data.shape[0], y))
+        x = max(0, min(self.img_data.shape[1] - 1, x))
+        y = max(0, min(self.img_data.shape[0] - 1, y))
         return x, y
