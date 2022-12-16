@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QKeySequence
+from PyQt6.QtGui import QAction, QIcon, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
 
     def start(self):
         self.resize(1280, 720)
+        self.setup_icon()
         self.setup_ui()
         self.setup_logic()
         self.setWindowTitle("Whaaale")
@@ -216,6 +217,10 @@ class MainWindow(QMainWindow):
         action_exit.setShortcuts(QKeySequence.StandardKey.Quit)
         fileMenu.addAction(action_open)
         fileMenu.addAction(action_exit)
+
+    def setup_icon(self):
+        icon = QIcon("style/icons/whaaale.ico")
+        self.setWindowIcon(icon)
 
     """Methods responsible for handling interaction with buttons etc."""
 

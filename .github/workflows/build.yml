@@ -51,7 +51,7 @@ jobs:
 
       # Build
       - name: Build
-        run: pyinstaller --noconsole --noupx --add-data "style/;style/" whaaale.py
+        run: pyinstaller --noconsole --noupx -i style/icons/whaaale.ico --add-data "style/;style/" whaaale.py
 
       # Upload
       - uses: actions/upload-artifact@v3
