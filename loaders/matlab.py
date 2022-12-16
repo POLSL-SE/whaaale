@@ -93,6 +93,7 @@ class MatlabLoader(AbstractFileLoader):
             bpp = MatlabLoader.get_bpp(var, parent)
             if bpp is None:
                 return
+            normalisation = None
 
         image = HsImage(var, bpp=bpp, normalisation=normalisation)
         return image
