@@ -1,48 +1,94 @@
 # This is a demo to test packaging
-from sys import argv
+import math
+import os
+from enum import Enum
+from sys import argv, exit
+from typing import Optional
 
 import numpy as np
-from PyQt6 import QtGui
-from PyQt6.QtCharts import QChart, QChartView, QLineSeries
-from PyQt6.QtGui import QPainter, QAction, QColor
+import numpy.typing as npt
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QPushButton,
-    QMenuBar,
-    QMenu,
-    QFrame,
-    QGridLayout,
-    QVBoxLayout,
-    QHBoxLayout,
-    QWidget,
-    QSlider,
-    QLabel,
     QComboBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMenuBar,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt
-import sys
+
+from lib import Coordinates, HsImage
+from loaders.loader import Loader
+from ui.image_preview import ImagePreview
+from ui.spectral_viewer import SpectralViewer
+
+
+class ApplicationState(Enum):
+    NO_IMAGE = 0
+    IMAGE_LOADED = 1
+    SELECT_PX = 2
+    SELECT_AREA_FIRST = 3
+    SELECT_AREA_SECOND = 4
+    SELECT_SIMILAR = 5
+
+
+class ImageMode(Enum):
+    MONO = 0
+    RGB = 1
+    SIMILAR = 2
 
 
 class MainWindow(QMainWindow):
+    state = ApplicationState.NO_IMAGE
+    image_mode = ImageMode.MONO
+    band_mono = 0
+    band_r = 0
+    band_g = 0
+    band_b = 0
+    image: Optional[HsImage] = None
+    threshold = 1.0
+    ignore_threshold_change = False
+    similar_mask: Optional[npt.NDArray[np.bool8]] = None
+
     def start(self):
         self.resize(1280, 720)
         self.setup_ui()
+        self.setup_logic()
         self.setWindowTitle("Whaaale")
         self.show()
 
+    def setup_logic(self):
+        self.loader = Loader(self)
+        self.image_preview.register_handlers(self.on_mouse_down, self.on_mouse_up)
+
     def setup_ui(self):
-        layout = QGridLayout()
-        toolbar1 = QHBoxLayout()
-        toolbar2 = QVBoxLayout()
-        toolbar3 = QGridLayout()
-        toolbar4 = QGridLayout()
+        # ****** Widget placing ******
+        central_widget = QWidget(self)
+        central_widget.resize(100, 100)
+        self.setCentralWidget(central_widget)
+
+        layout = QGridLayout(central_widget)
+        central_widget.setLayout(layout)
+        # Toolbar with image mode and bands selection
+        toolbar_image_settings = QVBoxLayout()
+        toolbar_mode = QHBoxLayout()
+        toolbar_image_settings.addLayout(toolbar_mode)
+        # Toolbar with tools (magic wand, select pixel/area) section
+        toolbar_tools = QVBoxLayout()
         viewer = QHBoxLayout()
         spectrum_graph = QHBoxLayout()
-        layout.addLayout(toolbar1, 0, 0, 2, 2)  # row, column, rowSpan, columnSpan
-        layout.addLayout(toolbar2, 2, 0, 2, 2)
-        layout.addLayout(toolbar3, 4, 0, 2, 2)
-        layout.addLayout(toolbar4, 6, 0, 2, 2)
+        layout.addLayout(
+            toolbar_image_settings, 0, 0, 2, 2
+        )  # row, column, rowSpan, columnSpan
+        layout.addLayout(toolbar_tools, 2, 0, 2, 2)
         layout.addLayout(viewer, 0, 2, 4, 6)
         layout.addLayout(spectrum_graph, 4, 2, 4, 6)
 
@@ -58,26 +104,69 @@ class MainWindow(QMainWindow):
         self.fake_col_button.setText("Fake color")
         self.fake_col_button.clicked.connect(self.fake_col_click)
 
+        self.single_band_settings = QWidget(central_widget)
+        sb_settings_layout = QFormLayout(self.single_band_settings)
+        sb_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.sb_combo = QComboBox(self.single_band_settings)
+        self.sb_combo.currentIndexChanged.connect(self.mono_band_changed)
+        sb_settings_layout.addRow("Mono band", self.sb_combo)
+        self.single_band_settings.setLayout(sb_settings_layout)
+
+        self.rgb_band_settings = QWidget(central_widget)
+        rgb_settings_layout = QFormLayout(self.rgb_band_settings)
+        rgb_settings_layout.setContentsMargins(0, 0, 0, 0)
+        self.rgb_combo_r = QComboBox(self.rgb_band_settings)
+        self.rgb_combo_r.currentIndexChanged.connect(self.r_band_changed)
+        self.rgb_combo_g = QComboBox(self.rgb_band_settings)
+        self.rgb_combo_g.currentIndexChanged.connect(self.g_band_changed)
+        self.rgb_combo_b = QComboBox(self.rgb_band_settings)
+        self.rgb_combo_b.currentIndexChanged.connect(self.b_band_changed)
+        rgb_settings_layout.addRow("Red band", self.rgb_combo_r)
+        rgb_settings_layout.addRow("Green band", self.rgb_combo_g)
+        rgb_settings_layout.addRow("Blue band", self.rgb_combo_b)
+        self.rgb_band_settings.setLayout(rgb_settings_layout)
+        self.rgb_band_settings.setVisible(False)
+
         # ****** Magic Wand ******
 
         self.label_wand = QLabel("Magic wand", self)
-        self.label_wand.setFixedSize(90, 20)
 
         self.button_magic = QPushButton(self)
         self.button_magic.setText("Magic wand")
         self.button_magic.clicked.connect(self.magic_wand_click)
 
-        slider_magic_wand = QSlider(Qt.Orientation.Horizontal, self)
-        slider_magic_wand.setGeometry(50, 50, 200, 50)
-        slider_magic_wand.setMinimum(0)
-        slider_magic_wand.setMaximum(100)
-        slider_magic_wand.setTickPosition(QSlider.TickPosition.TicksBelow)
-        slider_magic_wand.setTickInterval(2)
+        # Magic wand settings
+        mw_settings_widget = QWidget(central_widget)
+        magic_wand_layout = QFormLayout(mw_settings_widget)
+        magic_wand_layout.setContentsMargins(0, 0, 0, 0)
+
+        threshold_label = QLabel("Threshold (% of max MSE)")
+        magic_wand_layout.setWidget(
+            0, QFormLayout.ItemRole.SpanningRole, threshold_label
+        )
+
+        self.input_magic_wand = QDoubleSpinBox(mw_settings_widget)
+        self.input_magic_wand.setDecimals(6)
+        self.input_magic_wand.setMinimum(0.000001)
+        self.input_magic_wand.setMaximum(80.0)
+        self.input_magic_wand.setSingleStep(0.1)
+        self.input_magic_wand.setValue(1.0)
+        self.input_magic_wand.valueChanged.connect(self.threshold_input_changed)
+
+        self.slider_magic_wand = QSlider(Qt.Orientation.Horizontal, mw_settings_widget)
+        self.slider_magic_wand.setMinimum(0)
+        self.slider_magic_wand.setMaximum(80)
+        self.slider_magic_wand.setValue(60)
+        self.slider_magic_wand.setTickPosition(QSlider.TickPosition.TicksBothSides)
+        self.slider_magic_wand.setTickInterval(5)
+        self.slider_magic_wand.setTracking(True)
+        self.slider_magic_wand.valueChanged.connect(self.threshold_slider_changed)
+
+        magic_wand_layout.addRow(self.input_magic_wand, self.slider_magic_wand)
 
         # ****** Spectral curve ******
 
         self.label_spectral = QLabel("Spectral curve", self)
-        self.label_spectral.setFixedSize(60, 20)
 
         self.select_point = QPushButton(self)
         self.select_point.setText("Select point")
@@ -87,171 +176,274 @@ class MainWindow(QMainWindow):
         self.select_area.setText("Select area")
         self.select_area.clicked.connect(self.select_area_click)
 
-        self.label_export = QLabel("Export", self)
-        self.label_export.setFixedSize(60, 20)
-
-        self.export_png = QPushButton(self)
-        self.export_png.setText("PNG")
-        self.export_png.clicked.connect(self.export_click)
-        self.export_png.setFixedSize(35, 35)
-
-        self.export_csv = QPushButton(self)
-        self.export_csv.setText("CSV")
-        self.export_csv.clicked.connect(self.export_click)
-        self.export_csv.setFixedSize(35, 35)
-
-        # ****** Menu ******
-
-        select_mode = QComboBox()
-        select_mode.addItem("Mono")
-        select_mode.addItem("RGB")
-
-        self.label_band1 = QLabel("Band #1", self)
-        self.label_band1.setFixedSize(40, 20)
-        frame1 = QFrame(self)
-        frame1.setFrameShape(QFrame.Shape.StyledPanel)
-        frame1.setLineWidth(3)
-        frame1.setFixedSize(30, 30)
-        frame1.setStyleSheet("background-color:red")
-
-        self.label_band2 = QLabel("Band #2", self)
-        self.label_band2.setFixedSize(40, 20)
-        frame2 = QFrame(self)
-        frame2.setFrameShape(QFrame.Shape.StyledPanel)
-        frame2.setLineWidth(3)
-        frame2.setFixedSize(30, 30)
-        frame2.setStyleSheet("background-color:green")
-
-        self.label_band3 = QLabel("Band #3", self)
-        self.label_band3.setFixedSize(40, 20)
-        frame3 = QFrame(self)
-        frame3.setFrameShape(QFrame.Shape.StyledPanel)
-        frame3.setLineWidth(3)
-        frame3.setFixedSize(30, 30)
-        frame3.setStyleSheet("background-color:blue")
-
         # ****** Add elements to layout ******
 
         """Change the order of toolbars; maybe select_point/area to toolbar1?"""
 
-        # toolbar1.addWidget(frame)
-        toolbar1.addWidget(self.single_band_button)
-        toolbar1.addWidget(self.fake_col_button)
+        toolbar_mode.addWidget(self.single_band_button)
+        toolbar_mode.addWidget(self.fake_col_button)
 
-        toolbar2.addWidget(self.label_wand)
-        toolbar2.addWidget(self.button_magic)
-        toolbar2.addWidget(slider_magic_wand)
+        toolbar_image_settings.addWidget(self.single_band_settings)
+        toolbar_image_settings.addWidget(self.rgb_band_settings)
 
-        toolbar2.addWidget(self.label_spectral)
-        toolbar2.addWidget(self.select_point)
-        toolbar2.addWidget(self.select_area)
+        toolbar_tools.addWidget(self.label_wand)
+        toolbar_tools.addWidget(self.button_magic)
+        toolbar_tools.addWidget(mw_settings_widget)
 
-        # toolbar3.addWidget(self.label_spectral, 0, 0)
-        # toolbar3.addWidget(self.select_point, 1, 0)
-        # toolbar3.addWidget(self.select_area, 2, 0)
-        toolbar3.addWidget(self.label_export, 3, 0)
-        toolbar3.addWidget(self.export_png, 4, 0)
-        toolbar3.addWidget(self.export_csv, 4, 1)
+        toolbar_tools.addWidget(self.label_spectral)
+        toolbar_tools.addWidget(self.select_point)
+        toolbar_tools.addWidget(self.select_area)
 
-        toolbar4.addWidget(select_mode, 0, 0)
-        toolbar4.addWidget(self.label_band1, 1, 1)
-        toolbar4.addWidget(frame1, 1, 2)
-        toolbar4.addWidget(self.label_band2, 2, 1)
-        toolbar4.addWidget(frame2, 2, 2)
-        toolbar4.addWidget(self.label_band3, 3, 1)
-        toolbar4.addWidget(frame3, 3, 2)
-
-        spectrum_graph.addWidget(self.setup_chart())
-        viewer.addWidget(self.setup_chart())
-
-        # ****** Widget placing ******
-        widget = QWidget()
-        widget.resize(100, 100)
-        widget.setLayout(layout)
-        self.setCentralWidget(widget)
+        self.spectral_viewer = SpectralViewer(self)
+        spectrum_graph.addWidget(self.spectral_viewer)
+        self.image_preview = ImagePreview(self)
+        viewer.addWidget(self.image_preview)
 
         # ****** Menu bar ******
         self._createMenuBar()
-
-    def setup_chart(self):
-        series = QLineSeries()
-
-        series.append(0, 6)
-        series.append(2, 4)
-        l = np.array(
-            [[3, 8], [7, 4], [10, 5], [11, 1], [13, 3], [17, 6], [18, 3], [20, 2]]
-        )
-        for p in l:
-            series.append(p[0], p[1])
-
-        chart = QChart()
-        chart.legend().hide()
-        chart.addSeries(series)
-        chart.createDefaultAxes()
-        chart.setTitle("Simple line chart example")
-
-        chart_view = QChartView(chart)
-        chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        return chart_view
-        # self.chart_view = chart_view
-        # self.setCentralWidget(self.chart_view)
 
     def _createMenuBar(self):
         menuBar = QMenuBar(self)
         self.setMenuBar(menuBar)
         fileMenu = menuBar.addMenu("&File")
-        editMenu = menuBar.addMenu("&View")
-        helpMenu = menuBar.addMenu("&Help")
 
         # File menu
         action_open = QAction("Open", self)
         action_open.triggered.connect(self.open_click)
+        action_open.setShortcut(QKeySequence.StandardKey.Open)
         action_exit = QAction("Exit", self)
-        action_exit.triggered.connect(self.exit_click)
+        action_exit.triggered.connect(lambda: exit())
+        action_exit.setShortcuts(QKeySequence.StandardKey.Quit)
         fileMenu.addAction(action_open)
         fileMenu.addAction(action_exit)
-
-        # Help menu
-        action_help = QAction("Help", self)
-        action_help.triggered.connect(self.help_click)
-        helpMenu.addAction(action_help)
 
     """Methods responsible for handling interaction with buttons etc."""
 
     def single_band_click(self):
         print("clicked single band")
+        if self.state != ApplicationState.NO_IMAGE:
+            self.image_preview.clear_rubber_band()
+            self.image_mode = ImageMode.MONO
+            self.state = ApplicationState.IMAGE_LOADED
+            self.rgb_band_settings.setVisible(False)
+            self.single_band_settings.setVisible(True)
+            self.render_image()
 
     def fake_col_click(self):
         print("clicked fake color")
+        if self.state != ApplicationState.NO_IMAGE:
+            self.image_preview.clear_rubber_band()
+            self.image_mode = ImageMode.RGB
+            self.state = ApplicationState.IMAGE_LOADED
+            self.rgb_band_settings.setVisible(True)
+            self.single_band_settings.setVisible(False)
+            self.render_image()
 
     def magic_wand_click(self):
         print("clicked magic wand")
+        self.image_preview.clear_rubber_band()
+        self.state = ApplicationState.SELECT_SIMILAR
 
     def select_point_click(self):
         print("clicked select point")
+        self.image_preview.clear_rubber_band()
+        self.state = ApplicationState.SELECT_PX
 
     def select_area_click(self):
         print("clicked select area")
-
-    def export_click(self):
-        print("clicked export")
+        self.image_preview.clear_rubber_band()
+        self.state = ApplicationState.SELECT_AREA_FIRST
 
     def open_click(self):
         print("clicked open in menu bar")
+        img = self.loader.open_file()
+        if img is not None:
+            # Set NO_IMAGE to disable some event handlers
+            self.state = ApplicationState.NO_IMAGE
+            for combo in [
+                self.sb_combo,
+                self.rgb_combo_r,
+                self.rgb_combo_g,
+                self.rgb_combo_b,
+            ]:
+                combo.clear()
+                combo.addItems(img.labels)
 
-    def help_click(self):
-        print("clicked help in menu bar")
+            rgb_idx = img.closest_rgb_idx()
+            if rgb_idx is not None:
+                self.image_mode = ImageMode.RGB
+                self.band_r, self.band_g, self.band_b = rgb_idx
+                self.rgb_combo_r.setCurrentIndex(self.band_r)
+                self.rgb_combo_g.setCurrentIndex(self.band_g)
+                self.rgb_combo_b.setCurrentIndex(self.band_b)
+                self.band_mono = 0
+                self.rgb_band_settings.setVisible(True)
+                self.single_band_settings.setVisible(False)
+            else:
+                self.image_mode = ImageMode.MONO
+                self.band_r, self.band_g, self.band_b = 0, 0, 0
+                self.band_mono = 0
+                self.rgb_band_settings.setVisible(False)
+                self.single_band_settings.setVisible(True)
 
-    def exit_click(self):
-        # Dedicated function cuz there is no possibility
-        # to connect sys.exit() directly to button in menu bar
-        print("clicked exit in menu bar")
-        # sys.exit() to definitely terminate the program
-        sys.exit()
+            self.image_preview.clear_rubber_band()
+            self.spectral_viewer.clear()
+            self.spectral_viewer.update_labels(img.labels, img.labels_type)
+            self.image = img
+            self.state = ApplicationState.IMAGE_LOADED
+            self.similar_mask = None
+
+            self.render_image()
+
+    def mono_band_changed(self, idx: int):
+        print(
+            "Mono band changed to",
+            idx,
+            "ignoring"
+            if self.state == ApplicationState.NO_IMAGE or idx == -1
+            else "processing",
+        )
+        if self.state != ApplicationState.NO_IMAGE or idx == -1:
+            self.band_mono = idx
+            self.render_image()
+
+    def r_band_changed(self, idx: int):
+        print(
+            "Red band changed to",
+            idx,
+            "ignoring"
+            if self.state == ApplicationState.NO_IMAGE or idx == -1
+            else "processing",
+        )
+        if self.state != ApplicationState.NO_IMAGE or idx == -1:
+            self.band_r = idx
+            if self.image_mode == ImageMode.RGB:
+                self.render_image()
+
+    def g_band_changed(self, idx: int):
+        print(
+            "Green band changed to",
+            idx,
+            "ignoring"
+            if self.state == ApplicationState.NO_IMAGE or idx == -1
+            else "processing",
+        )
+        if self.state != ApplicationState.NO_IMAGE or idx == -1:
+            self.band_g = idx
+            if self.image_mode == ImageMode.RGB:
+                self.render_image()
+
+    def b_band_changed(self, idx: int):
+        print(
+            "Blue band changed to",
+            idx,
+            "ignoring"
+            if self.state == ApplicationState.NO_IMAGE or idx == -1
+            else "processing",
+        )
+        if self.state != ApplicationState.NO_IMAGE or idx == -1:
+            self.band_b = idx
+            if self.image_mode == ImageMode.RGB:
+                self.render_image()
+
+    def threshold_input_changed(self, new_val: float):
+        if self.threshold == new_val or self.ignore_threshold_change:
+            self.ignore_threshold_change = False
+            return
+
+        print("Threshold input changed to", new_val)
+        self.threshold = new_val
+        slider_pos = 10 * (math.log10(new_val) + 6)
+        self.ignore_threshold_change = True
+        self.slider_magic_wand.setValue(int(slider_pos))
+
+    def threshold_slider_changed(self, tick: int):
+        if self.ignore_threshold_change:
+            self.ignore_threshold_change = False
+            return
+
+        print("Threshold slider changed to", tick)
+        val = pow(10, tick / 10 - 6)
+        if self.threshold != val:
+            self.threshold = val
+            self.ignore_threshold_change = True
+            self.input_magic_wand.setValue(val)
+
+    def on_mouse_down(self, coordinates: Coordinates):
+        print("mouse down at", coordinates)
+        if self.state == ApplicationState.SELECT_AREA_FIRST:
+            self.start_position = coordinates
+            self.state = ApplicationState.SELECT_AREA_SECOND
+            self.image_preview.draw_rubber_band(coordinates)
+
+    def on_mouse_up(self, coordinates: Coordinates):
+        print("mouse up at", coordinates)
+        assert self.image is not None
+
+        match self.state:
+            case ApplicationState.SELECT_PX:
+                px = self.image.get_pixel(*coordinates)
+                self.spectral_viewer.from_pixel(px)
+                self.state = ApplicationState.IMAGE_LOADED
+            case ApplicationState.SELECT_AREA_SECOND:
+                self.image_preview.clear_rubber_band()
+                self.state = ApplicationState.IMAGE_LOADED
+                area = self.image.get_area(self.start_position, coordinates)
+                self.spectral_viewer.from_area(area)
+            case ApplicationState.SELECT_SIMILAR:
+                self.state = ApplicationState.IMAGE_LOADED
+                self.similar_mask = self.image.get_similar(coordinates, self.threshold)
+                self.image_mode = ImageMode.SIMILAR
+                self.rgb_band_settings.setVisible(False)
+                self.single_band_settings.setVisible(True)
+                self.render_image()
+
+    def render_image(self):
+        assert self.image is not None
+
+        if self.image.data.dtype.kind == "f":
+            match self.image_mode:
+                case ImageMode.MONO:
+                    self.image_preview.render_single_f(
+                        self.image.get_band_normalised(self.band_mono)
+                    )
+                case ImageMode.RGB:
+                    self.image_preview.render_rgb_f(
+                        self.image.get_RGB_bands_normalised(
+                            self.band_r, self.band_g, self.band_b
+                        )
+                    )
+                case ImageMode.SIMILAR:
+                    assert self.similar_mask is not None
+                    self.image_preview.render_similar_f(
+                        self.image.get_band_normalised(self.band_mono),
+                        self.similar_mask,
+                    )
+        else:
+            match self.image_mode:
+                case ImageMode.MONO:
+                    data = self.image.get_band(self.band_mono)
+                    data = self.image.as_8bpp(data)
+                    self.image_preview.render_single(data)
+                case ImageMode.RGB:
+                    data = self.image.get_RGB_bands(
+                        self.band_r, self.band_g, self.band_b
+                    )
+                    data = self.image.as_8bpp(data)
+                    self.image_preview.render_rgb(data)
+                case ImageMode.SIMILAR:
+                    assert self.similar_mask is not None
+                    data = self.image.get_band(self.band_mono)
+                    data = self.image.as_8bpp(data)
+                    self.image_preview.render_similar(data, self.similar_mask)
 
 
 def main():
+    if not "QT_QPA_PLATFORM" in os.environ:
+        os.environ["QT_QPA_PLATFORM"] = "windows:darkmode=2"
+    if os.name == "nt" and not "QT_STYLE_OVERRIDE" in os.environ:
+        os.environ["QT_STYLE_OVERRIDE"] = "fusion"
+
     a = QApplication(argv)
     main_window = MainWindow()
     main_window.start()
