@@ -161,6 +161,11 @@ class ImagePreview(QWidget):
         self.pixmap = QPixmap.fromImage(self.image)
         self.label.setPixmap(self.pixmap)
 
+    def render_similar_f(
+        self, band: npt.NDArray[np.floating], mask: npt.NDArray[np.bool8]
+    ):
+        self.render_similar((band * 255).astype(np.uint8), mask)
+
     def clamp_xy(self, x: int, y: int):
         assert self.img_data is not None
         x = max(0, min(self.img_data.shape[1], x))
