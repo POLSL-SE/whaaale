@@ -79,6 +79,11 @@ class HsImage(Generic[ScalarType]):
             self.norm_div: Optional[npt.NDArray[np.floating] | float] = (
                 norm_max - norm_min
             )
+            # Make sure that the divisor is not 0
+            if isinstance(self.norm_div, np.ndarray):
+                self.norm_div[self.norm_div == 0] = 1
+            elif self.norm_div == 0:
+                self.norm_div = 1
             self.norm_min: Optional[npt.NDArray[np.floating] | float] = norm_min
 
         bands = data.shape[2]
@@ -217,7 +222,7 @@ class HsImage(Generic[ScalarType]):
         func: Callable[[Any, int], npt.NDArray]
         | Callable[[Any, int, int, int], npt.NDArray]
     ):
-        def wrapper(self, *args):
+        def wrapper(self: "HsImage", *args):
             norm_data = self.get_norm_prop(*args)
             if norm_data is None:
                 return func(self, *args)
