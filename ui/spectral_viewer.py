@@ -90,6 +90,28 @@ class SpectralViewer(QWidget):
             self.grid_layout.removeWidget(self.toolbar)
             self.toolbar.setParent(None)
             self.canvas.setParent(None)
+            self.toolbar.destroy()
+            self.canvas.destroy()
+            if "CSV" in self.toolmanager.tools:
+                self.toolmanager.remove_tool("CSV")
+                # ToolManager.remove_tool triggers an action which removes the item from the toolbar,
+                # but remove_toolitem leaves the action in group and keeps itself as its parent
+                # This workaround may break when remove_toolitem gets fixed.
+                # self.toolbar.actions() can be used instead of the group, but may potentially find another action with no default widget
+                actions: list[QAction] = self.toolbar._groups["io"]
+                action: QWidgetAction = [
+                    a
+                    for a in actions
+                    if isinstance(a, QWidgetAction)
+                    and (
+                        a.defaultWidget() is None
+                        or isinstance(a.defaultWidget(), QToolButton)
+                        and a.defaultWidget().text() == "CSV"
+                    )
+                ][0]
+                self.toolbar._groups["io"].remove(action)
+                self.toolbar.removeAction(action)
+                action.setParent(None)
 
         self.fig = Figure(tight_layout=True)
         self.canvas = FigureCanvas(self.fig)
