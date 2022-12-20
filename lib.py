@@ -133,14 +133,15 @@ class HsImage(Generic[ScalarType]):
         self, base_coordinates: Coordinates, threshold_percent: float
     ) -> npt.NDArray[np.bool_]:
         """Returns a truth mask of pixels similar to the one with `base_coordinates` within threshold defined as percent of the maximum MSE (depends on `bpp`)."""
-        base = self.data[base_coordinates[1], base_coordinates[0]]
         h, w, b = self.data.shape
         if self.bpp is not None:
             threshold = ((1 << self.bpp) - 1) ** 2 * threshold_percent / 100
         else:
             threshold = threshold_percent / 100.0
+        normalised = self.normalised()
+        base = normalised[base_coordinates[1], base_coordinates[0]]
         # Covert to float to avoid underflow
-        flattened = self.normalised().reshape((h * w, b)).astype(np.float64)
+        flattened = normalised.reshape((h * w, b)).astype(np.float64)
         mse: npt.NDArray[np.float_] = (
             np.square(flattened - base).mean(axis=1).reshape((h, w))
         )
