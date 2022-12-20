@@ -49,6 +49,10 @@ class HsImage(Generic[ScalarType]):
     ) -> None:
         if data.ndim != 3:
             raise ValueError('"data" parameter must have 3 dimensions')
+        if data.shape[2] < 3:
+            raise ValueError(
+                "Image must have at least 3 bands to be properly displayed."
+            )
 
         pos_mask = data >= 0
 
