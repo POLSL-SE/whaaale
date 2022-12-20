@@ -140,10 +140,23 @@ class HsImage(Generic[ScalarType]):
             threshold = threshold_percent / 100.0
         normalised = self.normalised()
         base = normalised[base_coordinates[1], base_coordinates[0]]
-        # Covert to float to avoid underflow
-        flattened = normalised.reshape((h * w, b)).astype(np.float64)
+        # Covert to float to avoid underflow, make a copy when changing type to reuse the array later as output
+        # Cast integers to the smallest safe (including after square) float and floats to f32 if f32 or smaller and f64 if greater than f32
+        if self.bpp is not None:
+            if self.bpp <= 10:
+                target_type = np.float16
+            elif self.bpp <= 23:
+                target_type = np.float32
+            else:
+                target_type = np.float64
+        elif self.data.dtype.itemsize <= 4:
+            target_type = np.float32
+        else:
+            target_type = np.float64
+        flattened = normalised.reshape((h * w, b)).astype(target_type, copy=True)
+        flattened -= base
         mse: npt.NDArray[np.float_] = (
-            np.square(flattened - base).mean(axis=1).reshape((h, w))
+            np.square(flattened, out=flattened).mean(axis=1).reshape((h, w))
         )
         return mse <= threshold
 
