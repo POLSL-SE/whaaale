@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
         self.input_magic_wand = QDoubleSpinBox(mw_settings_widget)
         self.input_magic_wand.setDecimals(6)
         self.input_magic_wand.setMinimum(0.000001)
-        self.input_magic_wand.setMaximum(80.0)
+        self.input_magic_wand.setMaximum(100.0)
         self.input_magic_wand.setSingleStep(0.1)
         self.input_magic_wand.setValue(1.0)
         self.input_magic_wand.valueChanged.connect(self.threshold_input_changed)
