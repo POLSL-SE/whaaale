@@ -42,6 +42,12 @@ class ENVILoader(AbstractFileLoader):
                     labels_type = LabelType.WAVELENGTH
                 except ValueError:
                     labels_type = LabelType.CUSTOM_STR
+            elif "band_names" in metadata:
+                labels = [
+                    x.strip(whitespace + "{}")
+                    for x in metadata["band_names"].split(",")
+                ]
+                labels_type = LabelType.CUSTOM_STR
 
         if data.dtype.kind == "f":
             bpp = None
