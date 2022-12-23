@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from math import ceil
 from pathlib import Path
 from typing import Literal, Optional
+from matplotlib.cbook import _exception_printer
 
 import matplotlib.backend_tools
 import matplotlib.colors
@@ -75,6 +76,43 @@ class SpectralViewer(QWidget):
         font.setBold(True)
         status_label.setFont(font)
 
+        self.new_figure()
+
+        grid_layout = QGridLayout()
+        grid_layout.addWidget(status_label)
+        self.setLayout(grid_layout)
+        self.grid_layout = grid_layout
+
+    def new_figure(self):
+        if hasattr(self, "fig"):
+            self.fig.clear()
+            self.grid_layout.removeWidget(self.canvas)
+            self.grid_layout.removeWidget(self.toolbar)
+            self.toolbar.setParent(None)
+            self.canvas.setParent(None)
+            self.toolbar.destroy()
+            self.canvas.destroy()
+            if "CSV" in self.toolmanager.tools:
+                self.toolmanager.remove_tool("CSV")
+                # ToolManager.remove_tool triggers an action which removes the item from the toolbar,
+                # but remove_toolitem leaves the action in group and keeps itself as its parent
+                # This workaround may break when remove_toolitem gets fixed.
+                # self.toolbar.actions() can be used instead of the group, but may potentially find another action with no default widget
+                actions: list[QAction] = self.toolbar._groups["io"]
+                action: QWidgetAction = [
+                    a
+                    for a in actions
+                    if isinstance(a, QWidgetAction)
+                    and (
+                        a.defaultWidget() is None
+                        or isinstance(a.defaultWidget(), QToolButton)
+                        and a.defaultWidget().text() == "CSV"
+                    )
+                ][0]
+                self.toolbar._groups["io"].remove(action)
+                self.toolbar.removeAction(action)
+                action.setParent(None)
+
         self.fig = Figure(tight_layout=True)
         self.canvas = FigureCanvas(self.fig)
         # Set focus to enable keyboard shortcuts
@@ -86,15 +124,17 @@ class SpectralViewer(QWidget):
         self.canvas.setVisible(False)
         self.toolbar.setVisible(False)
 
+        # This will print errors to the console, because there are no buttons on the toolbar for these
+        # As a workaround a custom exception handler may be substituted for the default one
+        def ignore_key_error(ex: Exception):
+            if not isinstance(ex, KeyError):
+                raise ex
+
+        self.toolmanager._callbacks.exception_handler = ignore_key_error
         not_implemented_tools = ["fullscreen", "quit", "quit_all"]
         for tool in not_implemented_tools:
-            # This will print errors to the console, because there are no buttons on the toolbar for these
             self.toolmanager.remove_tool(tool)
-
-        grid_layout = QGridLayout()
-        grid_layout.addWidget(status_label)
-        self.setLayout(grid_layout)
-        self.grid_layout = grid_layout
+        self.toolmanager._callbacks.exception_handler = _exception_printer
 
     def update_labels(self, labels: list[str], labels_type: LabelType):
         self.labels = labels
@@ -141,7 +181,8 @@ class SpectralViewer(QWidget):
             raise RuntimeError("Labels have not been provided")
 
         bands = len(self.labels)
-        self.fig.clear()
+        # Regenerate all plot objects, because tools are not updated after clearing the figure and creating new Axes
+        self.new_figure()
         ax: Axes = self.fig.subplots()
 
         match self.labels_type:
@@ -189,28 +230,6 @@ class SpectralViewer(QWidget):
         ax.legend()
 
         CSV_TOOL_NAME = "CSV"
-        prev_CSV_tool = CSV_TOOL_NAME in self.toolmanager.tools
-        if prev_CSV_tool:
-            self.toolmanager.remove_tool(CSV_TOOL_NAME)
-            # ToolManager.remove_tool triggers an action which removes the item from the toolbar,
-            # but remove_toolitem leaves the action in group and keeps itself as its parent
-            # This workaround may break when remove_toolitem gets fixed.
-            # self.toolbar.actions() can be used instead of the group, but may potentially find another action with no default widget
-            actions: list[QAction] = self.toolbar._groups["io"]
-            action: QWidgetAction = [
-                a
-                for a in actions
-                if isinstance(a, QWidgetAction)
-                and (
-                    a.defaultWidget() is None
-                    or isinstance(a.defaultWidget(), QToolButton)
-                    and a.defaultWidget().text() == CSV_TOOL_NAME
-                )
-            ][0]
-            self.toolbar._groups["io"].remove(action)
-            self.toolbar.removeAction(action)
-            action.setParent(None)
-
         self.toolmanager.add_tool(
             CSV_TOOL_NAME,
             ExportData,
@@ -224,10 +243,11 @@ class SpectralViewer(QWidget):
         if self.status_label.isVisible():
             self.status_label.setVisible(False)
             self.grid_layout.removeWidget(self.status_label)
-            self.grid_layout.addWidget(self.canvas)
-            self.grid_layout.addWidget(self.toolbar)
-            self.canvas.setVisible(True)
-            self.toolbar.setVisible(True)
+
+        self.grid_layout.addWidget(self.canvas)
+        self.grid_layout.addWidget(self.toolbar)
+        self.canvas.setVisible(True)
+        self.toolbar.setVisible(True)
 
     def show_spectrum_bg(
         self, ax: Axes, values: AreaValues | PixelValues, x_values: NDArray[np.float64]

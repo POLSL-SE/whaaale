@@ -1,4 +1,3 @@
-from math import ceil, log2
 from typing import Any, BinaryIO, Optional
 
 import h5py
@@ -7,7 +6,7 @@ import numpy.typing as npt
 import scipy.io as sio
 from PyQt6.QtWidgets import QInputDialog, QWidget
 
-from lib import HsImage, ScalarType
+from lib import HsImage
 from loaders.abstract import AbstractFileLoader
 from utils import staticproperty
 
@@ -36,14 +35,29 @@ class MatlabLoader(AbstractFileLoader):
         # Extract data as NumPy array
         # https://docs.h5py.org/en/stable/whatsnew/2.1.html#dataset-value-property-is-now-deprecated
         var: npt.NDArray = data[var_name][()]
-        if var.dtype.kind != "i" and var.dtype.kind != "u":
+        if var.dtype.kind != "i" and var.dtype.kind != "u" and var.dtype.kind != "f":
             raise NotImplementedError(
-                f"Only integer types are supported, file uses {var.dtype.name}."
+                f"Only integer and floating point types are supported, file uses {var.dtype.name}."
             )
-        bpp = MatlabLoader.get_bpp(var, parent)
-        if bpp is None:
+
+        reordered = MatlabLoader.fix_array_order(var, parent)
+        if reordered is None:
             return
-        image = HsImage(var, bpp)
+        else:
+            var = reordered
+
+        if var.dtype.kind == "f":
+            bpp = None
+            normalisation = MatlabLoader.get_normalisation(parent)
+            if normalisation is None:
+                return
+        else:
+            bpp = MatlabLoader.get_bpp(var, parent)
+            if bpp is None:
+                return
+            normalisation = None
+
+        image = HsImage(var, bpp=bpp, normalisation=normalisation)
         return image
 
     @staticmethod
@@ -58,15 +72,30 @@ class MatlabLoader(AbstractFileLoader):
         if var_name is None:
             return
 
-        var: npt.NDArray[ScalarType] = data[var_name]
-        if var.dtype.kind != "i" and var.dtype.kind != "u":
+        var: npt.NDArray = data[var_name]
+        if var.dtype.kind != "i" and var.dtype.kind != "u" and var.dtype.kind != "f":
             raise NotImplementedError(
-                f"Only integer types are supported, file uses {var.dtype.name}"
+                f"Only integer and floating point types are supported, file uses {var.dtype.name}."
             )
-        bpp = MatlabLoader.get_bpp(var, parent)
-        if bpp is None:
+
+        reordered = MatlabLoader.fix_array_order(var, parent)
+        if reordered is None:
             return
-        image = HsImage(var, bpp)
+        else:
+            var = reordered
+
+        if var.dtype.kind == "f":
+            bpp = None
+            normalisation = MatlabLoader.get_normalisation(parent)
+            if normalisation is None:
+                return
+        else:
+            bpp = MatlabLoader.get_bpp(var, parent)
+            if bpp is None:
+                return
+            normalisation = None
+
+        image = HsImage(var, bpp=bpp, normalisation=normalisation)
         return image
 
     @staticmethod
@@ -83,24 +112,6 @@ class MatlabLoader(AbstractFileLoader):
             var_name = names[0]
 
         return var_name
-
-    @staticmethod
-    def get_bpp(data: npt.NDArray[ScalarType], parent: QWidget) -> Optional[int]:
-        MAX_BPP = 32
-        max_val: ScalarType = np.max(data)
-        min_bpp = ceil(log2(max_val))
-
-        bpp, ok = QInputDialog.getInt(
-            parent,
-            MatlabLoader.DIALOG_TITLE,
-            "Bits per pixel:",
-            min=min_bpp,
-            max=MAX_BPP,
-        )
-
-        if not ok:
-            return
-        return bpp
 
     @staticmethod
     def select_var(
