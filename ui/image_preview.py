@@ -110,12 +110,10 @@ class ImagePreview(QWidget):
             self.img_data.data,
             w,
             h,
-            3 * w,
+            self.img_data.strides[0],
             QImage.Format.Format_RGB888,
         )
-        self.pixmap = QPixmap.fromImage(self.image)
-        self.label.setPixmap(self.pixmap)
-        self.label.setFixedSize(w, h)
+        self._show_image()
 
     def render_rgb_f(self, rgb_bands: npt.NDArray[np.floating]):
         img_data = rgb_bands.astype(np.float32)
@@ -127,12 +125,10 @@ class ImagePreview(QWidget):
             self.img_data.data,
             w,
             h,
-            16 * w,
+            self.img_data.strides[0],
             QImage.Format.Format_RGBX32FPx4,
         )
-        self.pixmap = QPixmap.fromImage(self.image)
-        self.label.setPixmap(self.pixmap)
-        self.label.setFixedSize(w, h)
+        self._show_image()
 
     def render_single(self, band: npt.NDArray[np.uint8]):
         self.img_data = band.copy()
@@ -141,12 +137,10 @@ class ImagePreview(QWidget):
             self.img_data.data,
             w,
             h,
-            w,
+            self.img_data.strides[0],
             QImage.Format.Format_Grayscale8,
         )
-        self.pixmap = QPixmap.fromImage(self.image)
-        self.label.setPixmap(self.pixmap)
-        self.label.setFixedSize(w, h)
+        self._show_image()
 
     def render_single_f(self, band: npt.NDArray[np.floating]):
         self.render_single((band * 255).astype(np.uint8))
@@ -159,16 +153,22 @@ class ImagePreview(QWidget):
             self.img_data.data,
             self.img_data.shape[1],
             self.img_data.shape[0],
-            3 * self.img_data.shape[1],
+            self.img_data.strides[0],
             QImage.Format.Format_RGB888,
         )
-        self.pixmap = QPixmap.fromImage(self.image)
-        self.label.setPixmap(self.pixmap)
+        self._show_image()
 
     def render_similar_f(
         self, band: npt.NDArray[np.floating], mask: npt.NDArray[np.bool8]
     ):
         self.render_similar((band * 255).astype(np.uint8), mask)
+
+    def _show_image(self):
+        height = self.image.height()
+        width = self.image.width()
+        self.pixmap = QPixmap.fromImage(self.image)
+        self.label.setPixmap(self.pixmap)
+        self.label.setFixedSize(width, height)
 
     def clamp_xy(self, x: int, y: int):
         assert self.img_data is not None
