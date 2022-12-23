@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional
 import numpy as np
 import numpy.typing as npt
 from PyQt6.QtCore import QPoint, QRect, Qt
-from PyQt6.QtGui import QImage, QMouseEvent, QPixmap
+from PyQt6.QtGui import QImage, QMouseEvent, QPixmap, QFont
 from PyQt6.QtWidgets import (
     QGridLayout,
     QLabel,
@@ -32,12 +32,16 @@ class ImagePreview(QWidget):
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
-        self.label = QLabel(self.scroll_area)
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+
+        self.label = QLabel("Open an image to display preview.", self.scroll_area)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        self.label.setText("Open an image")
+        self.label.setFont(font)
         self.scroll_area.setWidget(self.label)
 
         grid_layout = QGridLayout()
